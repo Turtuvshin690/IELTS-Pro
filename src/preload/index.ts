@@ -16,11 +16,18 @@ export type VaultAPI = {
   validate: (key: string) => Promise<boolean>;
 };
 
+export type NimAPI = {
+  chat: (messages: unknown[]) => Promise<string>;
+  asr: (wav: Buffer) => Promise<string>;
+  tts: (text: string) => Promise<Buffer>;
+};
+
 declare global {
   interface Window {
     electronAPI: ElectronAPI;
     db: DbAPI;
     vault: VaultAPI;
+    nim: NimAPI;
   }
 }
 
@@ -38,4 +45,10 @@ contextBridge.exposeInMainWorld('vault', {
   set: (k: string) => ipcRenderer.invoke('vault:set', k),
   get: () => ipcRenderer.invoke('vault:get'),
   validate: (k: string) => ipcRenderer.invoke('vault:validate', k)
+});
+
+contextBridge.exposeInMainWorld('nim', {
+  chat: (m: unknown[]) => ipcRenderer.invoke('nim:chat', m),
+  asr: (b: Buffer) => ipcRenderer.invoke('nim:asr', b),
+  tts: (t: string) => ipcRenderer.invoke('nim:tts', t)
 });
