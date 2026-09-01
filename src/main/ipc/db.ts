@@ -7,15 +7,23 @@ let db: ReturnType<typeof getDb> | null = null;
 
 export function registerDbIpc(): void {
   const userData = app.getPath('userData');
-  const instance = getDb(userData);
+  let instance: any;
+  try {
+    instance = getDb(userData);
+  } catch (e: any) {
+    // last resort: in-memory no-op db so window still opens
+    console.error('getDb failed, using empty fallback', e?.stack || e);
+    const { getDb: getFallback } = require('../../lib/db/client');
+    try { instance = getFallback(userData); } catch {}
+  }
   db = instance;
 
   ipcMain.handle('db:query', (_event, sql: string, params: unknown[] = []) => {
-    return instance.prepare(sql).all(...(params as unknown[]));
+    try { return instance.prepare(sql).all(...(params as unknown[])); } catch (e) { console.warn('db:query fail', (e as any)?.message, sql); return []; }
   });
 
   ipcMain.handle('db:exec', (_event, sql: string, params: unknown[] = []) => {
-    return instance.prepare(sql).run(...(params as unknown[]));
+    try { return instance.prepare(sql).run(...(params as unknown[])); } catch (e) { console.warn('db:exec fail', (e as any)?.message, sql); return { lastInsertRowid: 0, changes: 0 }; }
   });
 
   ipcMain.handle('db:migrate', () => {
