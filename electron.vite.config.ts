@@ -5,7 +5,10 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   main: {
     build: {
-      lib: { entry: 'src/main/index.ts' }
+      lib: { entry: 'src/main/index.ts' },
+      rollupOptions: {
+        external: ['better-sqlite3']
+      }
     }
   },
   preload: {

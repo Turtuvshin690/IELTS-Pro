@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
+import { registerDbIpc } from './ipc/db';
 
 let win: BrowserWindow | null = null;
 
@@ -26,6 +27,7 @@ function createWindow(): void {
 ipcMain.handle('ping', () => 'pong');
 
 app.whenReady().then(() => {
+  registerDbIpc();
   createWindow();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
