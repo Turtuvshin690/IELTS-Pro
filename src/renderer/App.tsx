@@ -7,6 +7,7 @@ import Dashboard from './shared/progress/Dashboard';
 import Sidebar from './app/shell/Sidebar';
 import SettingsPage from './app/shell/SettingsPage';
 import ImportPage from './shared/import/ImportPage';
+import ResourcesPage from './modules/resources/ResourcesPage';
 
 export default function App(): JSX.Element {
   return (
@@ -18,6 +19,7 @@ export default function App(): JSX.Element {
             <Route path="/" element={<Dashboard />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/import" element={<ImportPage />} />
+            <Route path="/resources" element={<ResourcesPage />} />
             <Route path="/reading/:testId" element={<ReadingPage />} />
             <Route path="/listening/:testId" element={<ListeningPage />} />
             <Route path="/writing/:testId" element={<WritingEditor />} />

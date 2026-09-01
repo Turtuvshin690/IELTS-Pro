@@ -28,7 +28,7 @@ export type ImportAPI = {
 
 declare global {
   interface Window {
-    electronAPI: ElectronAPI;
+    electronAPI: ElectronAPI & { openExternal: (url: string) => Promise<void> };
     db: DbAPI;
     vault: VaultAPI;
     nim: NimAPI;
@@ -37,7 +37,8 @@ declare global {
 }
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  ping: () => ipcRenderer.invoke('ping')
+  ping: () => ipcRenderer.invoke('ping'),
+  openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url)
 });
 
 contextBridge.exposeInMainWorld('db', {

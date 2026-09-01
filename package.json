@@ -17,10 +17,13 @@
     "lint": "eslint . --ext .ts,.tsx"
   },
   "dependencies": {
+    "axios": "^1.7.2",
     "better-sqlite3": "^13.0.3",
+    "date-fns": "^3.6.0",
     "electron-updater": "^6.3.9",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-markdown": "^9.0.1",
     "react-router-dom": "^6.23.0",
     "zustand": "^4.5.2"
   },
@@ -47,7 +50,8 @@
   },
   "allowScripts": {
     "better-sqlite3": true,
-    "electron": true
+    "electron": true,
+    "esbuild": true
   },
   "build": {
     "npmRebuild": false,
