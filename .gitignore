@@ -1,0 +1,12 @@
+node_modules
+out
+dist
+.vite
+*.log
+.DS_Store
+.env
+*.tsbuildinfo
+resources/audio
+coverage
+playwright-report
+test-results
