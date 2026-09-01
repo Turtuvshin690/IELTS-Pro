@@ -2,6 +2,7 @@ import { HashRouter, Routes, Route } from 'react-router-dom';
 import ReadingPage from './modules/reading/ReadingPage';
 import ListeningPage from './modules/listening/ListeningPage';
 import WritingEditor from './modules/writing/WritingEditor';
+import SpeakingPage from './modules/speaking/SpeakingPage';
 
 export default function App(): JSX.Element {
   return (
@@ -11,6 +12,7 @@ export default function App(): JSX.Element {
         <Route path="/reading/:testId" element={<ReadingPage />} />
         <Route path="/listening/:testId" element={<ListeningPage />} />
         <Route path="/writing/:testId" element={<WritingEditor />} />
+        <Route path="/speaking/:testId" element={<SpeakingPage />} />
       </Routes>
     </HashRouter>
   );
