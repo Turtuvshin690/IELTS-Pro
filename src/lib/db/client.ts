@@ -2,14 +2,16 @@ import path from 'path';
 import fs from 'fs';
 import { MIGRATIONS } from './schema';
 
-// Try to load native better-sqlite3, fallback to JSON file if ABI mismatch or missing build tools
+// Force fallback JSON DB for packaged app to avoid native ABI crash — native requires Visual Studio Build Tools
+// Set USE_NATIVE_DB=1 env to try native (dev only)
 let Database: any = null;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  Database = require('better-sqlite3');
-} catch (e) {
-  // will use fallback
-  try { console.warn('better-sqlite3 not available, using fallback JSON db', (e as any)?.message); } catch {}
+if (process.env.USE_NATIVE_DB === '1') {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    Database = require('better-sqlite3');
+  } catch (e) {
+    try { console.warn('better-sqlite3 not available, using fallback JSON db', (e as any)?.message); } catch {}
+  }
 }
 
 class FallbackDB {
