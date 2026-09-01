@@ -63,7 +63,6 @@
     "win": {
       "target": [
         "nsis",
-        "msi",
         "portable"
       ],
       "icon": "build/icon.ico"
