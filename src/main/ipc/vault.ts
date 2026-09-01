@@ -22,7 +22,7 @@ export async function validateKey(key: string): Promise<boolean> {
 export function registerVaultIpc(): void {
   ipcMain.handle('vault:set', (_e: unknown, key: string) => {
     const enc = encryptKey(key);
-    fs.writeFileSync(KEY_FILE(), enc);
+    fs.writeFileSync(KEY_FILE(), enc, { mode: 0o600 });
     return true;
   });
 

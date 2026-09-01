@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTimer } from '../../shared/timer/useTimer';
 import { countWords, scoreWriting } from './scoring';
@@ -30,7 +30,13 @@ export default function WritingEditor(): JSX.Element {
 
   const wordCount = countWords(essay);
 
+  const essayRef = useRef(essay);
+  useEffect(() => {
+    essayRef.current = essay;
+  }, [essay]);
+
   // auto-save draft every 30s + beforeunload + restore
+  // uses ref get() pattern (equivalent to src/renderer/shared/autoSave.ts) so interval always reads current essay
   useEffect(() => {
     if (!testId) return;
     const key = `writingDraft:${testId}`;
@@ -42,14 +48,14 @@ export default function WritingEditor(): JSX.Element {
     }
     const interval = window.setInterval(() => {
       try {
-        localStorage.setItem(key, essay);
+        localStorage.setItem(key, essayRef.current);
       } catch {
         // ignore
       }
     }, 30000);
     const onBeforeUnload = () => {
       try {
-        localStorage.setItem(key, essay);
+        localStorage.setItem(key, essayRef.current);
       } catch {
         // ignore
       }
@@ -59,7 +65,6 @@ export default function WritingEditor(): JSX.Element {
       clearInterval(interval);
       window.removeEventListener('beforeunload', onBeforeUnload);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testId]);
 
   // keep essay persisted on change (immediate)
