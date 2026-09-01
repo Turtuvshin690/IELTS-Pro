@@ -22,12 +22,17 @@ export type NimAPI = {
   tts: (text: string) => Promise<Buffer>;
 };
 
+export type ImportAPI = {
+  run: (payload: unknown) => Promise<{ ok: boolean; errors?: string[] }>;
+};
+
 declare global {
   interface Window {
     electronAPI: ElectronAPI;
     db: DbAPI;
     vault: VaultAPI;
     nim: NimAPI;
+    import: ImportAPI;
   }
 }
 
@@ -51,4 +56,8 @@ contextBridge.exposeInMainWorld('nim', {
   chat: (m: unknown[]) => ipcRenderer.invoke('nim:chat', m),
   asr: (b: Buffer) => ipcRenderer.invoke('nim:asr', b),
   tts: (t: string) => ipcRenderer.invoke('nim:tts', t)
+});
+
+contextBridge.exposeInMainWorld('import', {
+  run: (payload: unknown) => ipcRenderer.invoke('import:run', payload)
 });
