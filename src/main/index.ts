@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 import { registerDbIpc } from './ipc/db';
+import { registerVaultIpc } from './ipc/vault';
 
 let win: BrowserWindow | null = null;
 
@@ -28,6 +29,7 @@ ipcMain.handle('ping', () => 'pong');
 
 app.whenReady().then(() => {
   registerDbIpc();
+  registerVaultIpc();
   createWindow();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
