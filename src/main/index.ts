@@ -5,6 +5,9 @@ import { registerVaultIpc } from './ipc/vault';
 import { registerNimIpc } from './ipc/nim';
 import { checkUpdates } from './updater';
 
+app.commandLine.appendSwitch('disable-crash-reporter');
+app.commandLine.appendSwitch('disable-features', 'Crashpad');
+
 let win: BrowserWindow | null = null;
 
 function createWindow(): void {
