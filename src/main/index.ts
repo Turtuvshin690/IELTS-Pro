@@ -3,6 +3,7 @@ import path from 'path';
 import { registerDbIpc } from './ipc/db';
 import { registerVaultIpc } from './ipc/vault';
 import { registerNimIpc } from './ipc/nim';
+import { checkUpdates } from './updater';
 
 let win: BrowserWindow | null = null;
 
@@ -33,6 +34,7 @@ app.whenReady().then(() => {
   registerVaultIpc();
   registerNimIpc();
   createWindow();
+  checkUpdates();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
