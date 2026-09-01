@@ -3,10 +3,10 @@ import { NavLink } from 'react-router-dom';
 const nav = [
   { to: '/', label: 'Dashboard', end: true },
   { to: '/resources', label: 'Resources' },
-  { to: '/reading/demo-reading', label: 'Reading' },
-  { to: '/listening/demo-listening', label: 'Listening' },
-  { to: '/writing/demo-writing', label: 'Writing' },
-  { to: '/speaking/demo-speaking', label: 'Speaking' },
+  { to: '/reading', label: 'Reading' },
+  { to: '/listening', label: 'Listening' },
+  { to: '/writing', label: 'Writing' },
+  { to: '/speaking', label: 'Speaking' },
   { to: '/import', label: 'Import' },
   { to: '/settings', label: 'Settings' },
 ];

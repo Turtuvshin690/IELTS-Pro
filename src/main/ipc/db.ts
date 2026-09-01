@@ -2,6 +2,7 @@ import { ipcMain, app } from 'electron';
 import { getDb, migrate } from '../../lib/db/client';
 import { importTests } from '../../lib/import/importer';
 import { validateImport } from '../../lib/import/validator';
+import { seedIfEmpty } from '../../lib/db/seed';
 
 let db: ReturnType<typeof getDb> | null = null;
 
@@ -17,6 +18,11 @@ export function registerDbIpc(): void {
     try { instance = getFallback(userData); } catch {}
   }
   db = instance;
+  // seed demos if empty — gives students choices + Start flow on first launch
+  try {
+    const r = seedIfEmpty(instance);
+    if (r.seeded) console.log('seeded demo tests', r.counts);
+  } catch {}
 
   ipcMain.handle('db:query', (_event, sql: string, params: unknown[] = []) => {
     try { return instance.prepare(sql).all(...(params as unknown[])); } catch (e) { console.warn('db:query fail', (e as any)?.message, sql); return []; }

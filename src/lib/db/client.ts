@@ -48,16 +48,33 @@ class FallbackDB {
     if (lower.includes('sqlite_master')) {
       return Object.keys(this.data).map(n => ({ name: n, type: 'table' }));
     }
-    // SELECT * FROM tests / sections / questions / attempts etc — simple parsing
     const sel = sql.match(/from\s+(\w+)/i);
     if (sel) {
       const table = sel[1];
       let rows = this.data[table] || [];
-      // crude WHERE id = ? handling
+      // Handle WHERE kind='reading' literal
+      const kindLit = sql.match(/kind\s*=\s*['"](\w+)['"]/i);
+      if (kindLit) {
+        const kind = kindLit[1];
+        rows = rows.filter((r: any) => r.kind === kind);
+        return rows;
+      }
+      // JOIN handling: questions JOIN sections — return questions filtered by testId
+      if (lower.includes('join') && lower.includes('sections') && lower.includes('testid')) {
+        // SELECT q.* FROM questions q JOIN sections s ON q.sectionId = s.id WHERE s.testId = ?
+        const testId = params[0];
+        const sectionIds = (this.data['sections'] || []).filter((s: any) => s.testId === testId).map((s: any) => s.id);
+        rows = (this.data['questions'] || []).filter((q: any) => sectionIds.includes(q.sectionId));
+        return rows;
+      }
       if (lower.includes('where') && params.length) {
-        // assume where id = ?
         const id = params[0];
         rows = rows.filter((r: any) => r.id === id || r.testId === id || r.sectionId === id);
+      }
+      // Handle WHERE id IN (?, ?, ?) with multiple params
+      if (lower.includes('where') && lower.includes(' in ') && params.length) {
+        const ids = params;
+        rows = rows.filter((r: any) => ids.includes(r.id));
       }
       return rows;
     }
@@ -65,19 +82,20 @@ class FallbackDB {
   }
   private handleRun(sql: string, params: any[]): any {
     const lower = sql.toLowerCase();
-    // INSERT OR REPLACE
-    const ins = sql.match(/insert or replace into (\w+)\s*values/i);
+    // INSERT OR REPLACE — allow column list: INSERT OR REPLACE INTO tests (id, kind, ...) VALUES
+    const ins = sql.match(/insert or replace into (\w+)/i);
     if (ins) {
-      const table = ins[1];
+      const rawTable = ins[1];
+      const table = ['tests','passages','sections','questions','attempts','scores','settings'].find(k => k === rawTable) || rawTable;
       if (!this.data[table]) this.data[table] = [];
-      // store raw params as object with id first param
       const id = params[0];
       const existingIdx = this.data[table].findIndex((r: any) => r.id === id);
-      const row: any = { id, _raw: params, _sql: sql };
-      // also try to map columns for known tables: use params as values
-      // For simplicity store as {id, kind, title, ...} based on table
-      if (table === 'tests' && params.length >= 4) row.kind = params[1], row.title = params[2], row.durationSec = params[3];
-      if (table === 'questions' && params.length >= 6) row.sectionId = params[1], row.qType = params[2];
+      const row: any = { id, _raw: params };
+      if (table === 'tests' && params.length >= 4) { row.kind = params[1]; row.title = params[2]; row.durationSec = params[3]; row.createdAt = params[4]; }
+      else if (table === 'passages' && params.length >= 3) { row.title = params[1]; row.body = params[2]; }
+      else if (table === 'sections' && params.length >= 6) { row.testId = params[1]; row.type = params[2]; row.title = params[3]; row.audioPath = params[4]; row.passageId = params[5]; }
+      else if (table === 'questions' && params.length >= 7) { row.sectionId = params[1]; row.qType = params[2]; row.prompt = params[3]; row.options = params[4]; row.answer = params[5]; row.marks = params[6]; }
+      else if (table === 'attempts' && params.length >= 8) { row.testId = params[1]; row.mode = params[2]; row.startedAt = params[3]; row.submittedAt = params[4]; row.rawScore = params[5]; row.band = params[6]; row.answers = params[7]; }
       if (existingIdx >= 0) this.data[table][existingIdx] = { ...this.data[table][existingIdx], ...row };
       else this.data[table].push(row);
       this.save();
