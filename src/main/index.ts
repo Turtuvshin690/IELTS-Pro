@@ -1,12 +1,32 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import path from 'path';
+import fs from 'fs';
 import { registerDbIpc } from './ipc/db';
 import { registerVaultIpc } from './ipc/vault';
 import { registerNimIpc } from './ipc/nim';
 import { checkUpdates } from './updater';
 
+process.env.ELECTRON_DISABLE_CRASH_REPORTER = '1';
 app.commandLine.appendSwitch('disable-crash-reporter');
 app.commandLine.appendSwitch('disable-features', 'Crashpad');
+
+const logFile = () => {
+  try { return path.join(app.getPath('userData'), 'main.log'); } catch { return path.join(process.cwd(), 'main.log'); }
+};
+function fileLog(...a: any[]) {
+  const line = new Date().toISOString() + ' ' + a.map(v => String(v)).join(' ') + '\n';
+  try { fs.appendFileSync(logFile(), line); } catch {}
+  // also console
+  // eslint-disable-next-line no-console
+  console.log(...a);
+}
+process.on('uncaughtException', (e) => {
+  fileLog('uncaughtException', (e as any)?.stack || String(e));
+  try { dialog.showErrorBox('IELTS Pro crash', String((e as any)?.stack || e)); } catch {}
+});
+process.on('unhandledRejection', (e: any) => {
+  fileLog('unhandledRejection', e?.stack || String(e));
+});
 
 let win: BrowserWindow | null = null;
 
@@ -33,11 +53,12 @@ function createWindow(): void {
 ipcMain.handle('ping', () => 'pong');
 
 app.whenReady().then(() => {
-  registerDbIpc();
-  registerVaultIpc();
-  registerNimIpc();
-  createWindow();
-  checkUpdates();
+  fileLog('app.whenReady userData', app.getPath('userData'), 'version', app.getVersion());
+  try { registerDbIpc(); fileLog('registerDbIpc ok'); } catch (e: any) { fileLog('registerDbIpc FAIL', e?.stack || e); dialog.showErrorBox('DB init fail', String(e?.stack || e)); }
+  try { registerVaultIpc(); fileLog('registerVaultIpc ok'); } catch (e: any) { fileLog('registerVaultIpc FAIL', e?.stack || e); }
+  try { registerNimIpc(); fileLog('registerNimIpc ok'); } catch (e: any) { fileLog('registerNimIpc FAIL', e?.stack || e); }
+  try { createWindow(); fileLog('createWindow ok'); } catch (e: any) { fileLog('createWindow FAIL', e?.stack || e); dialog.showErrorBox('Window fail', String(e?.stack || e)); }
+  try { checkUpdates(); } catch (e: any) { fileLog('checkUpdates FAIL', e?.stack || e); }
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
