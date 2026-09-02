@@ -4,9 +4,10 @@ import { Link } from 'react-router-dom';
 type TestRow = { id: string; kind: string; title: string; durationSec: number };
 
 const META: Record<string, { badge: string; desc: string; icon: string }> = {
-  'reading-a1': { badge: 'Academic', desc: '2 passages • 6 Qs • TFNG + MCQ + YNNG', icon: '📖' },
-  'reading-a2': { badge: 'Academic', desc: '1 passage • 4 Qs • Silk Road focus', icon: '🏛️' },
-  'reading-g1': { badge: 'General', desc: 'Notices & Workplace • 2 Qs • MCQ + Completion', icon: '📄' },
+  'reading-official-40': { badge: 'Official • 40 Qs', desc: 'IELTS.org 46pp • 10 sections • All task types • 60 min • Checked vs PDF keys', icon: '🎓' },
+  'reading-a1': { badge: 'Academic', desc: '2 passages • 8 Qs • TFNG + MCQ + YNNG', icon: '📖' },
+  'reading-a2': { badge: 'Academic', desc: '1 passage • 6 Qs • Silk Road focus', icon: '🏛️' },
+  'reading-g1': { badge: 'General', desc: 'Notices & Workplace • 4 Qs • MCQ + Completion', icon: '📄' },
 };
 
 export default function ReadingListPage(): JSX.Element {
@@ -20,7 +21,10 @@ export default function ReadingListPage(): JSX.Element {
         const w = window as unknown as { db?: { query: (sql: string, p?: unknown[]) => Promise<unknown[]> } };
         if (!w.db?.query) return;
         const rows = (await w.db.query("SELECT * FROM tests WHERE kind='reading' ORDER BY title")) as TestRow[];
-        if (!cancelled) setTests(rows);
+        if (!cancelled) {
+          const sorted = [...rows].sort((a, b) => (a.id === 'reading-official-40' ? -1 : b.id === 'reading-official-40' ? 1 : a.title.localeCompare(b.title)));
+          setTests(sorted);
+        }
       } finally { if (!cancelled) setLoading(false); }
     })();
     return () => { cancelled = true; };
