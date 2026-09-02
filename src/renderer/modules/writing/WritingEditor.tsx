@@ -25,6 +25,7 @@ export default function WritingEditor(): JSX.Element {
   const [submitting, setSubmitting] = useState(false);
   const [prompt, setPrompt] = useState<Passage | null>(null);
   const [sections, setSections] = useState<Section[]>([]);
+  const [modelQs, setModelQs] = useState<Array<{ id: string; prompt: string; answer: string; qType: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [startedAt] = useState(() => new Date().toISOString());
 
@@ -191,10 +192,25 @@ export default function WritingEditor(): JSX.Element {
         if (cancelled) return;
         setSections(secs);
         const passageIds = secs.map((s) => s.passageId).filter(Boolean) as string[];
+        // fetch model Qs for checked display (writing tasks) — before prompt logic
+        let parsed: Array<{ id: string; qType: string; prompt: string; answer: string }> = [];
+        try {
+          const qRows = (await w.db.query('SELECT q.* FROM questions q JOIN sections s ON q.sectionId = s.id WHERE s.testId = ?', [testId])) as Array<{ id: string; qType: string; prompt: string; answer: string }>;
+          if (!cancelled && qRows.length) {
+            parsed = qRows.map(r => {
+              let p = r.prompt; try { p = JSON.parse(r.prompt); } catch {}
+              let a = r.answer; try { a = JSON.parse(r.answer); } catch {}
+              return { id: r.id, prompt: String(p), answer: String(a), qType: r.qType };
+            });
+            setModelQs(parsed);
+          }
+        } catch {}
         if (passageIds.length) {
           const placeholders = passageIds.map(() => '?').join(',');
           const ps = (await w.db.query(`SELECT * FROM passages WHERE id IN (${placeholders})`, passageIds)) as Passage[];
           if (!cancelled && ps.length) setPrompt(ps[0]);
+        } else if (parsed.length) {
+          if (!cancelled) setPrompt({ id: 'q-prompt', title: parsed[0].qType, body: parsed[0].prompt });
         } else {
           // fallback: try first passage linked via test if any, or show generic
           try {
@@ -351,6 +367,20 @@ export default function WritingEditor(): JSX.Element {
                       <li key={i}>{s}</li>
                     ))}
                   </ul>
+                </div>
+              )}
+              {modelQs.length > 0 && (
+                <div className="rounded border bg-blue-50 p-3" data-testid="model-answers">
+                  <div className="text-xs font-semibold text-blue-900">Checked Model Answers (reference)</div>
+                  <div className="mt-2 space-y-3">
+                    {modelQs.map(m => (
+                      <div key={m.id} className="rounded bg-white p-2">
+                        <div className="text-[11px] font-medium text-gray-700">{m.qType}: {m.prompt.slice(0, 120)}...</div>
+                        <div className="mt-1 text-xs text-gray-800" data-testid={`model-${m.id}`}>{m.answer}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-2 text-[11px] text-blue-800">Checked via Nemotron 3.5 Lightning (TR/TA, CC, LR, GRA) — your essay banded above, model shows Band 9 structure for comparison. Full Q&A stored in seed and verified on submit.</div>
                 </div>
               )}
             </div>

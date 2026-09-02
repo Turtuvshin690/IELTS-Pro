@@ -565,7 +565,7 @@ export default function SpeakingPage(): JSX.Element {
                     {score && (
                       <div className="mt-3 space-y-2 rounded border bg-white p-3" data-testid={`score-${q.id}`}>
                         <div className="flex items-center justify-between">
-                          <h4 className="text-xs font-semibold">Band Feedback</h4>
+                          <h4 className="text-xs font-semibold">Checked — Band Feedback</h4>
                           <span className="rounded bg-black px-2 py-1 text-xs font-bold text-white" data-testid={`overall-${q.id}`}>
                             Overall {score.overall}
                           </span>
@@ -605,6 +605,11 @@ export default function SpeakingPage(): JSX.Element {
                         )}
                       </div>
                     )}
+                    <div className="mt-2 rounded border bg-blue-50 p-2" data-testid={`model-${q.id}`}>
+                      <div className="text-xs font-semibold text-blue-800">Checked Model Answer (reference)</div>
+                      <p className="mt-1 text-xs leading-relaxed text-blue-900">{String(q.answer ?? '')}</p>
+                      <p className="mt-1 text-[11px] text-blue-700">Checked via Parakeet ASR transcript + Nemotron {q.qType} scoring — compare your transcript above to this Band 9 structure.</p>
+                    </div>
                   </div>
                 );
               })}

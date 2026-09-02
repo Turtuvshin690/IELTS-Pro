@@ -165,8 +165,9 @@ export default function ReadingPage(): JSX.Element {
       </header>
 
       {submitted && (
-        <div className="border-b bg-green-50 px-4 py-2 text-sm">
-          Score: {submitted.raw}/{submitted.total} — Band {submitted.band}
+        <div className="border-b bg-green-50 px-4 py-3 text-sm">
+          <div className="font-medium">Checked: {submitted.raw}/{submitted.total} correct — Band {submitted.band}</div>
+          <div className="mt-1 text-xs text-green-800">Green = correct, red = incorrect. Correct answer shown for each question below. Review model answers and try again via Reading list.</div>
         </div>
       )}
 
@@ -202,14 +203,29 @@ export default function ReadingPage(): JSX.Element {
                     <h3 className="mb-3 text-sm font-semibold border-b pb-1">{g.section.title ?? g.section.id}</h3>
                   )}
                   <div className="space-y-6">
-                    {g.qs.map((q, idx) => (
-                      <div key={q.id} className="rounded border p-3">
-                        <div className="mb-1 text-xs text-gray-500">
-                          Q{idx + 1} • {q.qType}
+                    {g.qs.map((q, idx) => {
+                      const correctAns = answerToString(q.rawAnswer ?? q.answer);
+                      const userAns = answers[q.id] ?? '';
+                      const isCorrect = submitted ? String(correctAns).toLowerCase().trim() === String(userAns).toLowerCase().trim() : null;
+                      return (
+                        <div key={q.id} className={`rounded border p-3 ${submitted ? (isCorrect ? 'border-green-300 bg-green-50/40' : 'border-red-300 bg-red-50/40') : ''}`}>
+                          <div className="mb-1 flex items-center gap-2 text-xs text-gray-500">
+                            <span>Q{idx + 1} • {q.qType}</span>
+                            {submitted && (
+                              <span className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase ${isCorrect ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`} data-testid={`check-${q.id}`}>{isCorrect ? '✓ Correct' : '✗ Incorrect'}</span>
+                            )}
+                          </div>
+                          <QuestionRenderer question={q} value={userAns} onChange={onChange} />
+                          {submitted && (
+                            <div className="mt-2 rounded bg-white p-2 text-xs leading-relaxed" data-testid={`answer-${q.id}`}>
+                              <div><span className="font-medium">Your answer:</span> <span className={isCorrect ? 'text-green-700' : 'text-red-700'}>{userAns || '— (no answer)'}</span></div>
+                              <div><span className="font-medium">Correct answer:</span> <span className="text-green-700">{correctAns}</span></div>
+                              {!isCorrect && <div className="mt-1 text-gray-600">Checked via local deterministic scoring (case-insensitive, trimmed). Band via <code>rawToBand</code>.</div>}
+                            </div>
+                          )}
                         </div>
-                        <QuestionRenderer question={q} value={answers[q.id] ?? ''} onChange={onChange} />
-                      </div>
-                    ))}
+                      );
+                    })}
                     {g.qs.length === 0 && <p className="text-xs text-gray-400">No questions in this section.</p>}
                   </div>
                 </div>
