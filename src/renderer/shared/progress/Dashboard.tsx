@@ -1,11 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useProgressStore } from './store';
 import { weakAreas, paginate, bandTrends, type AttemptRow } from './analytics';
+import { dayKey, computeStreak, computeXP, TARGET_BAND_KEY } from './streak';
 
 type DbAttemptRow = AttemptRow;
 type QuestionRow = { id: string; qType: string; answer: string; sectionId: string };
 
 const PAGE_SIZE = 10;
+
+// ponytail: substring map covers current qTypes (listen→listening, writ→writing, speak→speaking, else reading)
+function skillForQType(qType: string): string {
+  const t = qType.toLowerCase();
+  if (t.includes('listen')) return '/listening';
+  if (t.includes('writ')) return '/writing';
+  if (t.includes('speak')) return '/speaking';
+  return '/reading';
+}
 
 function BandChart({ points }: { points: { at: string; band: number }[] }): JSX.Element {
   if (points.length === 0) {
@@ -96,6 +107,16 @@ export default function Dashboard(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [weakItems, setWeakItems] = useState<{ qType: string; correct: boolean }[] | null>(null);
+  const [targetBand, setTargetBand] = useState<number>(() => {
+    try {
+      const raw = localStorage.getItem(TARGET_BAND_KEY);
+      const n = raw == null ? NaN : Number(raw);
+      return Number.isFinite(n) ? n : 6.5;
+    } catch {
+      return 6.5;
+    }
+  });
+  const [testCounts, setTestCounts] = useState<Record<string, number>>({ reading: 0, listening: 0, writing: 0, speaking: 0 });
 
   // fetch attempts from window.db (local SQLite) — local-only
   useEffect(() => {
@@ -160,6 +181,41 @@ export default function Dashboard(): JSX.Element {
     };
   }, []);
 
+  // skill test counts from tests table — fallback to static 0 when DB missing
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const w = window as unknown as { db?: { query: (sql: string, params?: unknown[]) => Promise<unknown[]> } };
+        if (!w.db?.query) return;
+        const rows = (await w.db.query('SELECT kind, COUNT(*) as n FROM tests GROUP BY kind', [])) as Array<Record<string, unknown>>;
+        if (cancelled) return;
+        const counts: Record<string, number> = { reading: 0, listening: 0, writing: 0, speaking: 0 };
+        for (const r of rows) {
+          if (!r || typeof r !== 'object') continue;
+          const kind = String((r.kind ?? '') as string).toLowerCase();
+          if (!(kind in counts)) continue;
+          const agg = (r.n ?? r.count ?? r['COUNT(*)']) as unknown;
+          if (agg !== undefined && agg !== null) {
+            const n = Number(agg);
+            if (Number.isFinite(n)) {
+              counts[kind] = n;
+              continue;
+            }
+          }
+          // fallback DB returned a raw test row — count client-side
+          counts[kind] += 1;
+        }
+        if (!cancelled) setTestCounts(counts);
+      } catch {
+        // keep static 0 fallback
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // merge store + db: prefer db if non-empty, else store
   const allAttempts: (AttemptRow | { id: string; testId: string; band: number; at: string })[] = useMemo(() => {
     if (dbAttempts.length > 0) return dbAttempts;
@@ -207,32 +263,55 @@ export default function Dashboard(): JSX.Element {
   // also compute weak fallback via demo if weak empty and attempts empty? Show placeholder
   const weakList = weak.length ? weak : null;
 
-  const avgBand = useMemo(() => {
-    if (trends.length === 0) return null;
-    const sum = trends.reduce((a, p) => a + p.band, 0);
-    return Math.round((sum / trends.length) * 10) / 10;
-  }, [trends]);
+  const correctCount = useMemo(() => (weakItems ?? []).filter((i) => i.correct).length, [weakItems]);
+  const xp = computeXP(correctCount);
+  const streak = useMemo(() => {
+    const days = allAttempts
+      .map((a: any) => dayKey(String(a.submittedAt ?? a.at ?? '')))
+      .filter((d) => d.length >= 10);
+    return computeStreak(days, new Date().toISOString().slice(0, 10));
+  }, [allAttempts]);
 
-  const latestBand = trends.length ? trends[trends.length - 1].band : null;
+  const latest = sortedForTable[0] as (AttemptRow & { at?: string }) | undefined;
+  const continueModes = ['reading', 'listening', 'writing', 'speaking'];
+  const continueMode = latest?.mode ? String(latest.mode).toLowerCase() : '';
+  const continueHref = latest && continueModes.includes(continueMode) ? `/${continueMode}/${latest.testId}` : null;
+
+  const planItems = weak.slice(0, 3);
+  const weakestSkill = weak.length > 0 ? skillForQType(weak[0].qType) : '/reading';
 
   if (loading) return <div className="p-6 text-sm">Loading dashboard…</div>;
 
   return (
-    <div className="mx-auto max-w-6xl p-6">
+    <div className="mx-auto max-w-6xl bg-paper p-6 text-ink">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold" data-testid="dashboard-title">
-            Dashboard
+            Good day — let&apos;s study
           </h1>
-          <p className="mt-1 text-sm text-gray-500">Local-only analytics — all data from SQLite WAL in %APPDATA%/IELTS Pro.</p>
+          <p className="mt-1 text-sm text-gray-500">Local-only coach — all data from SQLite on this PC.</p>
         </div>
-        <div className="shrink-0 rounded border bg-white px-3 py-2 text-right shadow-sm">
-          <div className="text-xs text-gray-500">Attempts</div>
-          <div className="text-xl font-bold">{total}</div>
-          <div className="text-xs text-gray-500">
-            {avgBand != null ? `Avg ${avgBand}` : 'No avg yet'} {latestBand != null ? `• Latest ${latestBand}` : ''}
-          </div>
-        </div>
+        <label className="shrink-0 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-right shadow-card">
+          <span className="block text-xs text-gray-500">Target band</span>
+          <input
+            type="number"
+            min={0}
+            max={9}
+            step={0.5}
+            value={targetBand}
+            onChange={(e) => {
+              const n = Number(e.target.value);
+              setTargetBand(n);
+              try {
+                if (Number.isFinite(n)) localStorage.setItem(TARGET_BAND_KEY, String(n));
+              } catch {
+                // local-only persistence is best-effort
+              }
+            }}
+            className="w-20 text-right text-xl font-bold outline-none"
+            data-testid="target-band-input"
+          />
+        </label>
       </div>
 
       {error && (
@@ -241,10 +320,59 @@ export default function Dashboard(): JSX.Element {
         </div>
       )}
 
+      {/* Streak / XP row */}
+      <div className="mt-4 rounded-xl border border-zinc-200 bg-white p-4 shadow-card" data-testid="xp-row">
+        <span title="Study streak">🔥 {streak} day streak</span>
+        <span className="mx-2 text-gray-300">•</span>
+        <span>{xp} XP</span>
+        <span className="mx-2 text-gray-300">•</span>
+        <span>{total} attempt(s)</span>
+      </div>
+
+      {/* Continue / diagnostic CTA */}
+      <section className="mt-4 rounded-xl border border-zinc-200 bg-white p-4 shadow-card" data-testid="continue-card">
+        {latest && continueHref ? (
+          <Link to={continueHref} className="text-sm font-bold underline">
+            Continue with {latest.testId}
+          </Link>
+        ) : latest ? (
+          <div className="text-sm">
+            <span className="font-bold">Last attempt: {latest.testId}</span>
+          </div>
+        ) : (
+          <Link to="/reading/reading-ieltsfever-1" className="text-sm font-bold underline">
+            New here? Take a 10-min diagnostic
+          </Link>
+        )}
+      </section>
+
+      {/* Today's plan */}
+      <section className="mt-4 rounded-xl border border-zinc-200 bg-white p-4 shadow-card" data-testid="today-plan">
+        <h2 className="text-sm font-bold">Today&apos;s plan</h2>
+        {planItems.length > 0 ? (
+          <ul className="mt-2 space-y-2">
+            {planItems.map((w) => (
+              <li key={w.qType} data-testid={`today-plan-item-${w.qType}`}>
+                <Link to={skillForQType(w.qType)} className="text-sm underline">
+                  Drill {w.qType}
+                </Link>
+              </li>
+            ))}
+            <li data-testid="today-plan-item-review">
+              <Link to={weakestSkill} className="text-sm underline">
+                Review weakest skill
+              </Link>
+            </li>
+          </ul>
+        ) : (
+          <p className="mt-2 text-sm text-gray-500">Complete a test to get today&apos;s plan.</p>
+        )}
+      </section>
+
       {/* Band trends chart */}
-      <section className="mt-6 rounded-lg border bg-white p-4 shadow-sm" data-testid="trends-section">
+      <section className="mt-4 rounded-xl border border-zinc-200 bg-white p-4 shadow-card" data-testid="trends-section">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold">Band Trends</h2>
+          <h2 className="text-sm font-bold">Band Trends</h2>
           <span className="text-xs text-gray-500">{trends.length ? `${trends.length} point(s)` : 'No data'}</span>
         </div>
         <BandChart points={trends} />
@@ -254,15 +382,15 @@ export default function Dashboard(): JSX.Element {
       </section>
 
       {/* Weak-area cards */}
-      <section className="mt-6" data-testid="weak-areas-section">
+      <section className="mt-4" data-testid="weak-areas-section">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold">Weak Areas</h2>
+          <h2 className="text-sm font-bold">Weak Areas</h2>
           <span className="text-xs text-gray-500">Lowest accuracy first • TFNG/MCQ etc.</span>
         </div>
         {weakList && weakList.length > 0 ? (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" data-testid="weak-cards">
             {weakList.map((w) => (
-              <div key={w.qType} className="rounded-lg border bg-white p-4 shadow-sm" data-testid={`weak-card-${w.qType}`}>
+              <div key={w.qType} className="rounded-xl border border-zinc-200 bg-white p-4 shadow-card" data-testid={`weak-card-${w.qType}`}>
                 <div className="flex items-center justify-between">
                   <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">{w.qType}</div>
                   <span className={`rounded px-2 py-0.5 text-xs font-bold ${w.acc < 0.5 ? 'bg-red-100 text-red-700' : w.acc < 0.7 ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-700'}`}>
@@ -278,11 +406,14 @@ export default function Dashboard(): JSX.Element {
                   <div className={`h-full ${w.acc < 0.5 ? 'bg-red-500' : w.acc < 0.7 ? 'bg-amber-500' : 'bg-green-500'}`} style={{ width: `${Math.round(w.acc * 100)}%` }} />
                 </div>
                 <div className="mt-2 text-xs text-gray-500">{w.acc < 0.5 ? 'Focus area' : w.acc < 0.75 ? 'Practice recommended' : 'Strong'}</div>
+                <Link to={skillForQType(w.qType)} className="mt-2 inline-block text-xs font-bold underline" data-testid={`weak-practice-${w.qType}`}>
+                  Practice this
+                </Link>
               </div>
             ))}
           </div>
         ) : (
-          <div className="rounded-lg border border-dashed bg-gray-50 p-6 text-center" data-testid="weak-empty">
+          <div className="rounded-xl border border-dashed bg-gray-50 p-6 text-center" data-testid="weak-empty">
             <div className="text-sm font-medium text-gray-700">No per-question weak areas yet</div>
             <p className="mt-1 text-xs text-gray-500">
               Complete a Reading or Listening test with questions stored in SQLite to generate accuracy by qType. Uses{' '}
@@ -296,11 +427,35 @@ export default function Dashboard(): JSX.Element {
         )}
       </section>
 
+      {/* Skill shortcuts */}
+      <section className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Link to="/reading" className="rounded-xl border border-zinc-200 bg-white p-4 shadow-card">
+          <span className="text-base leading-none">📖</span>
+          <span className="ml-2 text-sm font-bold">Reading</span>
+          <span className="ml-2 text-xs text-gray-500">{testCounts.reading} tests</span>
+        </Link>
+        <Link to="/listening" className="rounded-xl border border-zinc-200 bg-white p-4 shadow-card">
+          <span className="text-base leading-none">🎧</span>
+          <span className="ml-2 text-sm font-bold">Listening</span>
+          <span className="ml-2 text-xs text-gray-500">{testCounts.listening} tests</span>
+        </Link>
+        <Link to="/writing" className="rounded-xl border border-zinc-200 bg-white p-4 shadow-card">
+          <span className="text-base leading-none">✍️</span>
+          <span className="ml-2 text-sm font-bold">Writing</span>
+          <span className="ml-2 text-xs text-gray-500">{testCounts.writing} tests</span>
+        </Link>
+        <Link to="/speaking" className="rounded-xl border border-zinc-200 bg-white p-4 shadow-card">
+          <span className="text-base leading-none">🎤</span>
+          <span className="ml-2 text-sm font-bold">Speaking</span>
+          <span className="ml-2 text-xs text-gray-500">{testCounts.speaking} tests</span>
+        </Link>
+      </section>
+
       {/* Paginated attempts table + history */}
-      <section className="mt-6 rounded-lg border bg-white shadow-sm" data-testid="history-section">
+      <section className="mt-4 rounded-xl border border-zinc-200 bg-white shadow-card" data-testid="history-section">
         <div className="border-b px-4 py-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold">History</h2>
+            <h2 className="text-sm font-bold">History</h2>
             <span className="text-xs text-gray-500" data-testid="pagination-info">
               {total} total • page {page} / {totalPages} • {PAGE_SIZE}/page
             </span>
