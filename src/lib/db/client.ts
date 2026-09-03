@@ -14,7 +14,7 @@ if (process.env.USE_NATIVE_DB === '1') {
   }
 }
 
-class FallbackDB {
+export class FallbackDB {
   private file: string;
   private data: Record<string, any[]> = {};
   constructor(userDataPath: string) {
@@ -52,29 +52,43 @@ class FallbackDB {
     if (sel) {
       const table = sel[1];
       let rows = this.data[table] || [];
-      // Handle WHERE kind='reading' literal
-      const kindLit = sql.match(/kind\s*=\s*['"](\w+)['"]/i);
-      if (kindLit) {
-        const kind = kindLit[1];
-        rows = rows.filter((r: any) => r.kind === kind);
-        return rows;
-      }
       // JOIN handling: questions JOIN sections — return questions filtered by testId
+      // Supports both param form (WHERE s.testId = ?) and literal form (WHERE s.testId = 'xxx')
       if (lower.includes('join') && lower.includes('sections') && lower.includes('testid')) {
         // SELECT q.* FROM questions q JOIN sections s ON q.sectionId = s.id WHERE s.testId = ?
-        const testId = params[0];
-        const sectionIds = (this.data['sections'] || []).filter((s: any) => s.testId === testId).map((s: any) => s.id);
-        rows = (this.data['questions'] || []).filter((q: any) => sectionIds.includes(q.sectionId));
+        let testId: string | null = params[0] ?? null;
+        const litJoin = sql.match(/testid\s*=\s*['"]([^'"]+)['"]/i);
+        if (litJoin) testId = litJoin[1];
+        if (testId) {
+          const sectionIds = (this.data['sections'] || []).filter((s: any) => s.testId === testId).map((s: any) => s.id);
+          rows = (this.data['questions'] || []).filter((q: any) => sectionIds.includes(q.sectionId));
+          return rows;
+        }
+        return rows;
+      }
+      // Handle WHERE col='literal' form (e.g. kind='reading', testId='reading-ieltsfever-1', id='x')
+      // Collect all literal equality filters and apply them (AND semantics).
+      const litFilters = [...sql.matchAll(/(\w+)\s*=\s*['"]([^'"]+)['"]/gi)];
+      if (litFilters.length) {
+        for (const m of litFilters) {
+          const col = m[1];
+          const val = m[2];
+          // Only apply to known columns to avoid matching unrelated SQL fragments
+          if (['kind', 'testId', 'id', 'sectionId', 'type', 'key'].includes(col)) {
+            rows = rows.filter((r: any) => String(r[col] ?? r.id ?? '') === val);
+          }
+        }
         return rows;
       }
       if (lower.includes('where') && params.length) {
+        // Support WHERE id IN (?, ?, ?) with multiple params
+        if (lower.includes(' in ')) {
+          const ids = params;
+          rows = rows.filter((r: any) => ids.includes(r.id));
+          return rows;
+        }
         const id = params[0];
         rows = rows.filter((r: any) => r.id === id || r.testId === id || r.sectionId === id);
-      }
-      // Handle WHERE id IN (?, ?, ?) with multiple params
-      if (lower.includes('where') && lower.includes(' in ') && params.length) {
-        const ids = params;
-        rows = rows.filter((r: any) => ids.includes(r.id));
       }
       return rows;
     }
@@ -96,6 +110,7 @@ class FallbackDB {
       else if (table === 'sections' && params.length >= 6) { row.testId = params[1]; row.type = params[2]; row.title = params[3]; row.audioPath = params[4]; row.passageId = params[5]; }
       else if (table === 'questions' && params.length >= 7) { row.sectionId = params[1]; row.qType = params[2]; row.prompt = params[3]; row.options = params[4]; row.answer = params[5]; row.marks = params[6]; }
       else if (table === 'attempts' && params.length >= 8) { row.testId = params[1]; row.mode = params[2]; row.startedAt = params[3]; row.submittedAt = params[4]; row.rawScore = params[5]; row.band = params[6]; row.answers = params[7]; }
+      else if (table === 'settings' && params.length >= 2) { row.key = params[0]; row.value = params[1]; }
       if (existingIdx >= 0) this.data[table][existingIdx] = { ...this.data[table][existingIdx], ...row };
       else this.data[table].push(row);
       this.save();
@@ -108,6 +123,29 @@ class FallbackDB {
       this.data[table].push({ _raw: params });
       this.save();
       return { lastInsertRowid: 1, changes: 1 };
+    }
+    const del = sql.match(/delete from (\w+)/i);
+    if (del) {
+      const table = del[1];
+      if (this.data[table]) {
+        if (!lower.includes('where') || params.length === 0) {
+          this.data[table] = [];
+        } else {
+          const p = params[0];
+          if (table === 'questions') {
+            const sIds = (this.data['sections'] || []).filter((s: any) => s.testId === p).map((s: any) => s.id);
+            this.data[table] = this.data[table].filter(
+              (r: any) => r.id !== p && r.testId !== p && r.sectionId !== p && !sIds.includes(r.sectionId)
+            );
+          } else {
+            this.data[table] = this.data[table].filter(
+              (r: any) => r.id !== p && r.testId !== p && r.sectionId !== p
+            );
+          }
+        }
+        this.save();
+      }
+      return { lastInsertRowid: 0, changes: 1 };
     }
     return { lastInsertRowid: 0, changes: 0 };
   }

@@ -51,6 +51,12 @@ function createWindow(): void {
 }
 
 ipcMain.handle('ping', () => 'pong');
+ipcMain.handle('shell:openExternal', (_e, url: string) => {
+  const { shell } = require('electron');
+  // allow only http/https to official IELTS domains + general web for resources
+  try { const u = new URL(url); if (!['https:', 'http:'].includes(u.protocol)) throw new Error('blocked'); } catch { throw new Error('Invalid URL'); }
+  return shell.openExternal(url);
+});
 
 app.whenReady().then(() => {
   fileLog('app.whenReady userData', app.getPath('userData'), 'version', app.getVersion());

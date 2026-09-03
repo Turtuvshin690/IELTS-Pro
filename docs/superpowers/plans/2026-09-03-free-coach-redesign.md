@@ -4,14 +4,16 @@
 
 **Goal:** Rebuild IELTS Pro's UI into a "Free Coach" study app (new shell, coach home, unified libraries, consistent exam players) with zero database changes.
 
-**Architecture:** Phased visual reconstruction — each task leaves the app compiling and all 35 existing unit tests green. Pure logic (streak/XP) is TDD unit-tested; components are typechecked plus manually verified in the dev server. No new DB tables, no route changes, no scoring changes.
+**Architecture:** Phased visual reconstruction — each task leaves the app compiling and all existing unit tests green. Pure logic (streak/XP) is TDD unit-tested; components are typechecked plus manually verified in the dev server. No new DB tables, no route changes, no scoring changes.
 
-**Tech Stack:** React 18 + Tailwind v3 (existing), new: `lucide-react` (icons), `framer-motion` (motion). Charts stay hand-rolled SVG. Electron 30, vitest 1.6.1 (node env, `tests/unit/**/*.test.ts`).
+**Tech Stack:** React 18 + Tailwind v3 (existing). No new dependencies — ponytail: emoji icons already pattern the codebase (listening 🎧, writing ✍️, speaking 🎤) and the page fade is one CSS rule. Charts stay hand-rolled SVG. Electron 30, vitest 1.6.1 (node env, `tests/unit/**/*.test.ts`).
+
+**Working rules (ponytail full):** No new npm deps. No new shared components — each player/library change is inlined per page (a shared extract happens only if a 4th caller appears). Fewest files, shortest diff that matches the spec. Intentional simplifications are marked with `// ponytail:` comments.
 
 ## Global Constraints
 
 - No database schema changes — `attempts` / `questions` / `tests` / `sections` / `passages` tables untouched.
-- All 35 existing unit tests must stay green after every task.
+- All existing unit tests must stay green after every task (35 at plan start).
 - Keep `data-testid` hooks: `sidebar`, `nav-*`, `dashboard-title`, `timer`, `question-item-*`, `attempts-table`, `band-chart`, `*-list`, `*-card-*`, `start-*-*`, `*-empty`, `parts-nav`, `submit-btn`.
 - No network calls in core flows; no paywall/premium copy anywhere.
 - Typecheck command: `npx tsc --noEmit -p tsconfig.web.json`.
@@ -26,54 +28,39 @@ New files and what each owns:
 
 - `src/renderer/shared/progress/streak.ts` — pure streak/XP/date helpers (no React, no DOM). Single source for all streak math.
 - `tests/unit/streak.test.ts` — unit tests for the above.
-- `src/renderer/shared/library/PracticeLibrary.tsx` — generic skill-library UI (search + chips + cards). Props-driven, owns no fetching.
-- `src/renderer/shared/exam/ExamHeader.tsx` — slim exam-mode header (exit, title, timer pill, submit). Owns no timer logic; receives `formatted` string.
 
-Modified files:
+Modified files (in place — no new shared components):
 
-- `package.json` — add `lucide-react`, `framer-motion`.
 - `tailwind.config.js` — paper/ink/accent tokens.
 - `src/renderer/index.css` — paper background, focus ring, smooth scroll.
-- `src/renderer/App.tsx` — paper shell + page fade wrapper.
+- `src/renderer/App.tsx` — paper shell.
 - `src/renderer/app/shell/Sidebar.tsx` — coach nav rewrite (full file replace, 47 lines).
 - `src/renderer/shared/progress/Dashboard.tsx` — coach home rewrite (uses `streak.ts` + existing `analytics.ts` exports `weakAreas`, `bandTrends`, `paginate`).
-- `src/renderer/modules/listening/ListeningListPage.tsx` — migrate to `PracticeLibrary`.
-- `src/renderer/modules/writing/WritingListPage.tsx` — migrate to `PracticeLibrary`.
-- `src/renderer/modules/speaking/SpeakingListPage.tsx` — migrate to `PracticeLibrary`.
+- `src/renderer/modules/listening/ListeningListPage.tsx` — restyle in place (keep `META`).
+- `src/renderer/modules/writing/WritingListPage.tsx` — restyle in place.
+- `src/renderer/modules/speaking/SpeakingListPage.tsx` — restyle in place.
 - `src/renderer/modules/reading/ReadingListPage.tsx` — card-style alignment only; its search/chips/category logic stays.
-- `src/renderer/modules/listening/ListeningPage.tsx` — header swap to `ExamHeader` (lines 230-244).
-- `src/renderer/modules/writing/WritingEditor.tsx` — header swap to `ExamHeader` (lines 249-264).
+- `src/renderer/modules/listening/ListeningPage.tsx` — header restyle in place (lines 230-244).
+- `src/renderer/modules/writing/WritingEditor.tsx` — header restyle in place (lines 249-264).
 - `src/renderer/modules/speaking/SpeakingPage.tsx` — header restyle in place (lines 410-415, no timer there; keep device selector).
 - `src/renderer/modules/reading/ReadingPage.tsx` — red promo banner (line ~373) becomes free-practice strip.
 
 ---
 
-### Task 1: Dependencies + theme tokens
+### Task 1: Theme tokens + paper shell
 
 **Files:**
-- Modify: `package.json`
 - Modify: `tailwind.config.js`
 - Modify: `src/renderer/index.css`
 - Modify: `src/renderer/App.tsx`
 
 **Interfaces:**
 - Consumes: nothing.
-- Produces: `paper` / `ink` Tailwind colors and `bg-paper text-ink` shell classes used by Tasks 3–7.
+- Produces: `paper` / `ink` Tailwind colors and `bg-paper text-ink` shell classes used by Tasks 3–6.
 
-- [ ] **Step 1: Install libraries**
+- [ ] **Step 1: Extend Tailwind tokens (no new dependencies)**
 
-```bash
-npm i lucide-react framer-motion
-```
-
-- [ ] **Step 2: Run typecheck baseline to confirm green start**
-
-Run: `npx tsc --noEmit -p tsconfig.web.json`
-Expected: PASS (no output).
-
-- [ ] **Step 3: Extend Tailwind tokens**
-
-Replace `tailwind.config.js` theme block with:
+No `npm install` — ponytail: icons reuse the existing emoji pattern, motion is plain CSS. Replace `tailwind.config.js` theme block with:
 
 ```js
 theme: {
@@ -89,7 +76,12 @@ theme: {
 },
 ```
 
-- [ ] **Step 4: Base styles in `src/renderer/index.css`**
+- [ ] **Step 2: Run typecheck baseline to confirm green start**
+
+Run: `npx tsc --noEmit -p tsconfig.web.json`
+Expected: PASS (no output).
+
+- [ ] **Step 3: Base styles in `src/renderer/index.css`**
 
 Replace file content with:
 
@@ -113,48 +105,11 @@ body {
 }
 ```
 
-- [ ] **Step 5: Paper shell + page fade in `src/renderer/App.tsx`**
+- [ ] **Step 4: Paper shell in `src/renderer/App.tsx`**
 
-Replace lines 16–38 (`export default function App...`) with:
+Change the wrapper div classes only: `flex h-screen bg-gray-50` → `flex h-screen bg-paper text-ink`, and `<main className="flex-1 overflow-auto bg-gray-50">` → `<main className="flex-1 overflow-auto bg-paper">`. No other changes (ponytail: page-fade animation skipped — static render is the minimum that works).
 
-```tsx
-import { motion } from 'framer-motion';
-
-export default function App(): JSX.Element {
-  return (
-    <HashRouter>
-      <div className="flex h-screen bg-paper text-ink">
-        <Sidebar />
-        <motion.main
-          className="flex-1 overflow-auto bg-paper"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.18 }}
-        >
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/import" element={<ImportPage />} />
-            <Route path="/resources" element={<ResourcesPage />} />
-            <Route path="/reading" element={<ReadingListPage />} />
-            <Route path="/reading/:testId" element={<ReadingPage />} />
-            <Route path="/listening" element={<ListeningListPage />} />
-            <Route path="/listening/:testId" element={<ListeningPage />} />
-            <Route path="/writing" element={<WritingListPage />} />
-            <Route path="/writing/:testId" element={<WritingEditor />} />
-            <Route path="/speaking" element={<SpeakingListPage />} />
-            <Route path="/speaking/:testId" element={<SpeakingPage />} />
-          </Routes>
-        </motion.main>
-      </div>
-    </HashRouter>
-  );
-}
-```
-
-Keep all existing imports and add `import { motion } from 'framer-motion';`.
-
-- [ ] **Step 6: Verify typecheck + full unit suite**
+- [ ] **Step 5: Verify typecheck + full unit suite**
 
 Run: `npx tsc --noEmit -p tsconfig.web.json`
 Expected: PASS.
@@ -162,11 +117,11 @@ Expected: PASS.
 Run: `npx vitest run tests/unit`
 Expected: 14 files / 35 tests PASS.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add package.json package-lock.json tailwind.config.js src/renderer/index.css src/renderer/App.tsx
-git commit -m "feat: free-coach theme tokens, paper shell, motion + icons deps"
+git add tailwind.config.js src/renderer/index.css src/renderer/App.tsx
+git commit -m "feat: free-coach theme tokens and paper shell"
 ```
 
 ---
@@ -202,6 +157,10 @@ describe('streak helpers', () => {
   });
   it('empty input is zero', () => expect(computeStreak([], '2026-09-03')).toBe(0));
   it('XP is 10 per correct answer', () => expect(computeXP(7)).toBe(70));
+  it('XP never goes negative', () => {
+    expect(computeXP(-5)).toBe(0);
+    expect(computeXP(0)).toBe(0);
+  });
   it('exposes target band key', () => expect(TARGET_BAND_KEY).toBe('ieltsPro.targetBand'));
 });
 ```
@@ -248,7 +207,7 @@ export function computeXP(correctCount: number): number {
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run tests/unit/streak.test.ts`
-Expected: 7 tests PASS.
+Expected: 8 tests PASS.
 
 - [ ] **Step 5: Commit**
 
@@ -275,26 +234,17 @@ Replace the full content of `src/renderer/app/shell/Sidebar.tsx` with:
 ```tsx
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import {
-  LayoutDashboard,
-  BookOpen,
-  Headphones,
-  PenLine,
-  Mic,
-  Library,
-  Settings,
-  Flame,
-} from 'lucide-react';
 import { dayKey, computeStreak } from '../../shared/progress/streak';
 
+// ponytail: emoji icons match the existing list-page pattern (no icon dep)
 const nav = [
-  { to: '/', label: 'Home', icon: LayoutDashboard, end: true },
-  { to: '/reading', label: 'Reading', icon: BookOpen },
-  { to: '/listening', label: 'Listening', icon: Headphones },
-  { to: '/writing', label: 'Writing', icon: PenLine },
-  { to: '/speaking', label: 'Speaking', icon: Mic },
-  { to: '/resources', label: 'Resources', icon: Library },
-  { to: '/settings', label: 'Settings', icon: Settings },
+  { to: '/', label: 'Home', icon: '🏠', end: true },
+  { to: '/reading', label: 'Reading', icon: '📖' },
+  { to: '/listening', label: 'Listening', icon: '🎧' },
+  { to: '/writing', label: 'Writing', icon: '✍️' },
+  { to: '/speaking', label: 'Speaking', icon: '🎤' },
+  { to: '/resources', label: 'Resources', icon: '📚' },
+  { to: '/settings', label: 'Settings', icon: '⚙️' },
 ];
 
 function todayKey(): string {
@@ -331,7 +281,7 @@ export default function Sidebar(): JSX.Element {
         <div className="mt-0.5 flex items-center gap-1.5 text-xs">
           <span className="rounded bg-emerald-600 px-1.5 py-0.5 font-bold text-white">FREE FOREVER</span>
           <span className="flex items-center gap-0.5 font-semibold text-amber-600" data-testid="streak-count" title="Study streak">
-            <Flame size={13} /> {streak}
+            🔥 {streak}
           </span>
         </div>
       </div>
@@ -348,7 +298,7 @@ export default function Sidebar(): JSX.Element {
             }
             data-testid={`nav-${item.label.toLowerCase()}`}
           >
-            <item.icon size={16} />
+            <span className="text-base leading-none">{item.icon}</span>
             {item.label}
           </NavLink>
         ))}
@@ -360,7 +310,7 @@ export default function Sidebar(): JSX.Element {
         </div>
         <div className="mt-2 text-[10px] tracking-wide text-zinc-400">v1.0.0 · Electron 30</div>
       </div>
-    </asible>
+    </aside>
   );
 }
 ```
@@ -375,7 +325,7 @@ Expected: PASS.
 - [ ] **Step 3: Full unit suite**
 
 Run: `npx vitest run tests/unit`
-Expected: PASS (35 + 7 new = 42 tests).
+Expected: PASS (35 + 8 new = 43 tests).
 
 - [ ] **Step 4: Manual check in dev server**
 
@@ -386,7 +336,7 @@ Expected: all routes render, no console errors.
 
 ```bash
 git add src/renderer/app/shell/Sidebar.tsx
-git commit -m "feat: coach sidebar with free identity, icons, streak"
+git commit -m "feat: coach sidebar with free identity, emoji icons, streak"
 ```
 
 ---
@@ -406,12 +356,12 @@ git commit -m "feat: coach sidebar with free identity, icons, streak"
 Replace `Dashboard.tsx` content with a component that keeps the existing data-fetching effect verbatim (attempts query + weak-items computation, lines 100–161 of the current file) and renders:
 
 1. Header row: `h1 data-testid="dashboard-title"` "Good day — let's study", target-band number input (`data-testid="target-band-input"`, min 0 max 9 step 0.5, localStorage `TARGET_BAND_KEY`, default 6.5).
-2. `div data-testid="xp-row"`: streak flame + days, XP total (`computeXP` over correctly-answered stored questions — reuse the `weakItems` correct count; XP = correct × 10), attempts count.
+2. `div data-testid="xp-row"`: streak flame 🔥 + days (`computeStreak` over attempt days), XP total (`computeXP` over correctly-answered stored questions — reuse the `weakItems` correct count; XP = correct × 10), attempts count.
 3. `section data-testid="continue-card"`: latest attempt from `sortedForTable[0]` → "Continue with {testId}" link to `/{mode}/{testId}` when mode is reading/listening/writing/speaking; when no attempts, diagnostic CTA linking to the first Reading test (`/reading/reading-ieltsfever-1`): "New here? Take a 10-min diagnostic".
 4. `section data-testid="today-plan"`: up to 3 items from `weak` (lowest accuracy first) → "Drill {qType}" linking to `/reading` (reading qTypes) or the matching skill list; plus one review item linking to the weakest skill list. Each item `data-testid="today-plan-item-{qType}"`.
 5. Keep `BandChart` function and `trends-section` verbatim (restyle container to `bg-white shadow-card`).
 6. Weak-area cards keep `weak-card-{qType}` ids; each gets a "Practice this" link `data-testid="weak-practice-{qType}"` to the owning skill list page.
-7. Skill shortcuts row: four links (Reading/Listening/Writing/Speaking lists) with lucide icons and live test counts from `tests` table (`SELECT kind, COUNT(*)`) — fallback to static 0 when DB missing.
+7. Skill shortcuts row: four links (Reading/Listening/Writing/Speaking lists) with emoji icons (📖🎧✍️🎤) and live test counts from `tests` table (`SELECT kind, COUNT(*)`) — fallback to static 0 when DB missing.
 8. Keep history table + pagination (`history-section`, `attempts-table`, `prev-page`, `next-page`, `page-indicator`) verbatim.
 
 Styling: page wrapper `mx-auto max-w-6xl p-6`, cards `rounded-xl border border-zinc-200 bg-white p-4 shadow-card`, section titles `text-sm font-bold`.
@@ -440,183 +390,27 @@ git commit -m "feat: coach home with continue, today plan, streak and XP"
 
 ---
 
-### Task 5: Shared PracticeLibrary + ExamHeader
-
-**Files:**
-- Create: `src/renderer/shared/library/PracticeLibrary.tsx`
-- Create: `src/renderer/shared/exam/ExamHeader.tsx`
-
-**Interfaces:**
-- Consumes: `TestRow = { id: string; kind: string; title: string; durationSec: number }` (same shape all four list pages already query).
-- Produces: `PracticeLibrary` props `{ skill: 'listening'|'writing'|'speaking', title, subtitle, icon: LucideIcon, tests: TestRow[], meta: (t: TestRow) => { badge: string; desc: string }, basePath: string }` preserving per-skill testids; `ExamHeader` props `{ title: string; formatted: string; submitLabel: string; submitDisabled?: boolean; onSubmit: () => void; onExit: () => void; submitTestId?: string }` preserving `timer` + `submit-btn` ids.
-
-- [ ] **Step 1: Create `PracticeLibrary.tsx`**
-
-```tsx
-import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Search, Clock3 } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
-
-export type LibraryTest = { id: string; kind: string; title: string; durationSec: number };
-
-type Props = {
-  skill: 'listening' | 'writing' | 'speaking';
-  title: string;
-  subtitle: string;
-  icon: LucideIcon;
-  tests: LibraryTest[];
-  meta: (t: LibraryTest) => { badge: string; desc: string };
-  basePath: string;
-  emptyHint: string;
-};
-
-export default function PracticeLibrary({ skill, title, subtitle, icon: Icon, tests, meta, basePath, emptyHint }: Props): JSX.Element {
-  const [q, setQ] = useState('');
-  const filtered = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    if (!needle) return tests;
-    return tests.filter((t) => `${t.title} ${t.id} ${meta(t).desc}`.toLowerCase().includes(needle));
-  }, [tests, q, meta]);
-
-  return (
-    <div className="mx-auto max-w-5xl p-6" data-testid={`${skill}-list`}>
-      <div className="flex items-center gap-2.5">
-        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 text-white">
-          <Icon size={18} />
-        </span>
-        <div>
-          <h1 className="text-2xl font-extrabold tracking-tight">{title}</h1>
-          <p className="mt-0.5 text-sm text-zinc-500">{subtitle} · <span className="font-semibold text-emerald-700">Free</span></p>
-        </div>
-      </div>
-      <div className="relative mt-5">
-        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder={`Search ${title.toLowerCase()} tests…`}
-          className="w-full rounded-full border border-zinc-200 bg-white py-2.5 pl-9 pr-4 text-sm outline-none placeholder:text-zinc-400 focus:border-emerald-500"
-        />
-      </div>
-      <div className="mt-5 grid gap-4 md:grid-cols-2">
-        {filtered.map((t) => {
-          const m = meta(t);
-          return (
-            <div key={t.id} className="flex flex-col rounded-xl border border-zinc-200 bg-white p-5 shadow-card" data-testid={`${skill}-card-${t.id}`}>
-              <div className="flex items-center justify-between">
-                <Icon size={20} className="text-zinc-400" />
-                <span className="rounded bg-ink px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">{m.badge}</span>
-              </div>
-              <div className="mt-3 text-sm font-bold">{t.title}</div>
-              <div className="mt-1 text-xs text-zinc-500">{m.desc}</div>
-              <div className="mt-1 flex items-center gap-1 text-xs text-zinc-400">
-                <Clock3 size={12} /> {Math.round(t.durationSec / 60)} min · free forever
-              </div>
-              <Link to={`${basePath}/${t.id}`} className="mt-4 rounded-lg bg-emerald-600 px-4 py-2 text-center text-sm font-bold text-white hover:bg-emerald-700" data-testid={`start-${skill}-${t.id}`}>
-                Practice free →
-              </Link>
-            </div>
-          );
-        })}
-      </div>
-      {filtered.length === 0 && (
-        <div className="mt-6 rounded-xl border border-dashed bg-white p-8 text-center text-sm text-zinc-500" data-testid={`${skill}-empty`}>
-          {tests.length === 0 ? emptyHint : 'No tests match your search.'}
-        </div>
-      )}
-    </div>
-  );
-}
-```
-
-- [ ] **Step 2: Create `ExamHeader.tsx`**
-
-```tsx
-type Props = {
-  title: string;
-  formatted: string;
-  submitLabel: string;
-  submitDisabled?: boolean;
-  onSubmit: () => void;
-  onExit: () => void;
-  submitTestId?: string;
-};
-
-export default function ExamHeader({ title, formatted, submitLabel, submitDisabled, onSubmit, onExit, submitTestId }: Props): JSX.Element {
-  return (
-    <header className="flex h-12 shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-4">
-      <div className="flex min-w-0 items-center gap-2">
-        <button onClick={onExit} className="rounded-lg border border-zinc-200 px-2.5 py-1 text-xs font-semibold text-zinc-600 hover:bg-zinc-50" title="Exit test">
-          ← Exit
-        </button>
-        <h1 className="truncate text-sm font-bold text-zinc-800">{title}</h1>
-      </div>
-      <div className="flex items-center gap-3">
-        <span className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1 font-mono text-sm font-bold tabular-nums" data-testid="timer">
-          {formatted}
-        </span>
-        <button
-          onClick={onSubmit}
-          disabled={submitDisabled}
-          data-testid={submitTestId}
-          className="rounded-lg bg-emerald-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
-        >
-          {submitLabel}
-        </button>
-      </div>
-    </header>
-  );
-}
-```
-
-- [ ] **Step 3: Typecheck**
-
-Run: `npx tsc --noEmit -p tsconfig.web.json`
-Expected: PASS (unused until Task 6/7 — that is intended, not a placeholder).
-
-- [ ] **Step 4: Unit suite**
-
-Run: `npx vitest run tests/unit`
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add src/renderer/shared/library/PracticeLibrary.tsx src/renderer/shared/exam/ExamHeader.tsx
-git commit -m "feat: shared practice library and exam header components"
-```
-
----
-
-### Task 6: Migrate Listening / Writing / Speaking libraries
+### Task 5: Unified free practice libraries (restyle in place)
 
 **Files:**
 - Modify: `src/renderer/modules/listening/ListeningListPage.tsx` (full replace, keep `META`)
 - Modify: `src/renderer/modules/writing/WritingListPage.tsx` (full replace)
+- Modify: `src/renderer/modules/speaking/SpeakingListPage.tsx` (full replace)
 - Modify: `src/renderer/modules/reading/ReadingListPage.tsx` (card-style alignment only)
 
 **Interfaces:**
-- Consumes: `PracticeLibrary` + `LibraryTest` (Task 5). Same `TestRow` DB query per page (unchanged SQL).
+- Consumes: nothing new — same `TestRow` DB query per page (unchanged SQL), inline JSX below.
 - Produces: identical `data-testid` values as today (`listening-list`, `listening-card-*`, `start-listening-*`, `listening-empty`, same for writing/speaking).
 
 - [ ] **Step 1: Rewrite `ListeningListPage.tsx`**
 
-Keep the `META` record verbatim. Replace the component with:
+Keep the `META` record verbatim. Replace the component with the free-library layout (search + cards). Full file:
 
 ```tsx
-import { useEffect, useState } from 'react';
-import { Headphones } from 'lucide-react';
-import PracticeLibrary, { LibraryTest } from '../../shared/library/PracticeLibrary';
-import { META } from './listeningMeta';
-```
+import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 
-No — do not create a new meta file (YAGNI). Instead keep `META` in the same file and pass an inline `meta` callback:
-
-```tsx
-import { useEffect, useState } from 'react';
-import { Headphones } from 'lucide-react';
-import PracticeLibrary, { LibraryTest } from '../../shared/library/PracticeLibrary';
+type TestRow = { id: string; kind: string; title: string; durationSec: number };
 
 const META: Record<string, { badge: string; desc: string }> = {
   'listening-1': { badge: '4 Parts', desc: 'Everyday conversation → Lecture • 5 Qs • once-only' },
@@ -624,39 +418,67 @@ const META: Record<string, { badge: string; desc: string }> = {
 };
 
 export default function ListeningListPage(): JSX.Element {
-  const [tests, setTests] = useState<LibraryTest[]>([]);
+  const [tests, setTests] = useState<TestRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [q, setQ] = useState('');
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const w = window as unknown as { db?: { query: (s: string, p?: unknown[]) => Promise<unknown[]> } };
         if (!w.db?.query) return;
-        const rows = (await w.db.query("SELECT * FROM tests WHERE kind='listening' ORDER BY title")) as LibraryTest[];
+        const rows = (await w.db.query("SELECT * FROM tests WHERE kind='listening' ORDER BY title")) as TestRow[];
         if (!cancelled) setTests(rows);
       } finally { if (!cancelled) setLoading(false); }
     })();
     return () => { cancelled = true; };
   }, []);
+  const filtered = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    if (!needle) return tests;
+    return tests.filter((t) =>
+      `${t.title} ${t.id} ${(META[t.id]?.desc ?? '')}`.toLowerCase().includes(needle),
+    );
+  }, [tests, q]);
   if (loading) return <div className="p-8 text-sm">Loading listening tests…</div>;
   return (
-    <PracticeLibrary
-      skill="listening"
-      title="Listening"
-      subtitle="30 min + 10 min transfer · audio plays once in mock"
-      icon={Headphones}
-      tests={tests}
-      basePath="/listening"
-      emptyHint="No listening tests. Import or restart to seed."
-      meta={(t) => META[t.id] ?? { badge: 'Listening', desc: `${Math.round(t.durationSec / 60)} min` }}
-    />
+    <div className="mx-auto max-w-5xl p-6" data-testid="listening-list">
+      <div className="flex items-center gap-2.5">
+        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 text-xl text-white">🎧</span>
+        <div>
+          <h1 className="text-2xl font-extrabold tracking-tight">Listening</h1>
+          <p className="mt-0.5 text-sm text-zinc-500">30 min + 10 min transfer · audio plays once in mock · <span className="font-semibold text-emerald-700">Free</span></p>
+        </div>
+      </div>
+      <input
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="Search listening tests…"
+        className="mt-5 w-full rounded-full border border-zinc-200 bg-white py-2.5 px-4 text-sm outline-none placeholder:text-zinc-400 focus:border-emerald-500"
+      />
+      <div className="mt-5 grid gap-4 md:grid-cols-2">
+        {filtered.map((t) => {
+          const m = META[t.id] ?? { badge: 'Listening', desc: `${Math.round(t.durationSec / 60)} min` };
+          return (
+            <div key={t.id} className="flex flex-col rounded-xl border border-zinc-200 bg-white p-5 shadow-card" data-testid={`listening-card-${t.id}`}>
+              <div className="flex items-center justify-between"><span className="text-xl">🎧</span><span className="rounded bg-ink px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">{m.badge}</span></div>
+              <div className="mt-3 text-sm font-bold">{t.title}</div>
+              <div className="mt-1 text-xs text-zinc-500">{m.desc}</div>
+              <div className="mt-1 text-xs text-zinc-400">{Math.round(t.durationSec / 60)} min · free forever</div>
+              <Link to={`/listening/${t.id}`} className="mt-4 rounded-lg bg-emerald-600 px-4 py-2 text-center text-sm font-bold text-white hover:bg-emerald-700" data-testid={`start-listening-${t.id}`}>Practice free →</Link>
+            </div>
+          );
+        })}
+      </div>
+      {filtered.length === 0 && <div className="mt-6 rounded-xl border border-dashed bg-white p-8 text-center text-sm text-zinc-500" data-testid="listening-empty">{tests.length === 0 ? 'No listening tests. Import or restart to seed.' : 'No tests match your search.'}</div>}
+    </div>
   );
 }
 ```
 
-- [ ] **Step 2: Rewrite `WritingListPage.tsx`** — same shape with `PenLine` icon, `skill="writing"`, `basePath="/writing"`, subtitle `60 min · Task 1 + Task 2 · AI feedback included free`, meta `(t) => ({ badge: t.id.includes('writing-a') ? 'Academic' : 'General', desc: 'Task 1 + Task 2 · live word count · auto-save' })`, emptyHint `No writing tests. Import or restart to seed.`
+- [ ] **Step 2: Rewrite `WritingListPage.tsx`** — same structure as Step 1 with these exact substitutions: skill `writing`; header icon `✍️`; title `Writing`; subtitle `60 min · Task 1 + Task 2 · AI feedback included free · Free`; search placeholder `Search writing tests…`; no `META` record — badge is `t.id.includes('writing-a') ? 'Academic' : 'General'` and desc is `Task 1 + Task 2 · live word count · auto-save`; card icon `✍️`; testids `writing-list`, `writing-card-${t.id}`, `start-writing-${t.id}`, `writing-empty`; empty text `No writing tests. Import or restart to seed.`; SQL `WHERE kind='writing'`; link base `/writing`; loading text `Loading writing tests…`.
 
-- [ ] **Step 3: Rewrite `SpeakingListPage.tsx`** — same shape with `Mic` icon, `skill="speaking"`, `basePath="/speaking"`, subtitle `11–14 min · Parts 1–3 · mic required`, meta `() => ({ badge: '11-14 min', desc: 'Part 1 intro · Part 2 cue card · Part 3 discussion' })`, emptyHint `No speaking tests. Import or restart to seed.`
+- [ ] **Step 3: Rewrite `SpeakingListPage.tsx`** — same structure as Step 1 with these exact substitutions: skill `speaking`; header icon `🎤`; title `Speaking`; subtitle `11–14 min · Parts 1–3 · mic required · Free`; search placeholder `Search speaking tests…`; no `META` record — badge is always `11-14 min` and desc is `Part 1 intro · Part 2 cue card · Part 3 discussion`; card icon `🎤`; testids `speaking-list`, `speaking-card-${t.id}`, `start-speaking-${t.id}`, `speaking-empty`; empty text `No speaking tests. Import or restart to seed.`; SQL `WHERE kind='speaking'`; link base `/speaking`; loading text `Loading speaking tests…`.
 
 - [ ] **Step 4: Align Reading cards (no logic change)**
 
@@ -681,7 +503,7 @@ git commit -m "feat: unified free practice libraries for listening, writing, spe
 
 ---
 
-### Task 7: Consistent exam players + free strip
+### Task 6: Consistent exam players + free strip
 
 **Files:**
 - Modify: `src/renderer/modules/listening/ListeningPage.tsx` (header lines 230-244)
@@ -690,45 +512,53 @@ git commit -m "feat: unified free practice libraries for listening, writing, spe
 - Modify: `src/renderer/modules/reading/ReadingPage.tsx` (promo banner ~line 371-379)
 
 **Interfaces:**
-- Consumes: `ExamHeader` (Task 5). `useTimer` `formatted` strings pass through unchanged. All submit handlers unchanged.
+- Consumes: nothing new — inline header JSX below, `useTimer` `formatted` strings pass through unchanged. All submit handlers unchanged.
 - Produces: same `timer` / `submit-btn` / `score-banner` / `parts-nav` / `audio-bar` ids.
 
-- [ ] **Step 1: Listening header → ExamHeader**
+- [ ] **Step 1: Listening header restyle in place**
 
-In `ListeningPage.tsx`, add imports:
+In `ListeningPage.tsx`, add `import { useNavigate } from 'react-router-dom';` and `const navigate = useNavigate();` next to the existing `useParams` line. Replace the `<header ...>...</header>` block (lines 230-244) with:
 
 ```tsx
-import { useNavigate } from 'react-router-dom';
-import ExamHeader from '../../shared/exam/ExamHeader';
+<header className="flex h-12 shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-4">
+  <div className="flex min-w-0 items-center gap-2">
+    <button onClick={() => navigate('/listening')} className="rounded-lg border border-zinc-200 px-2.5 py-1 text-xs font-semibold text-zinc-600 hover:bg-zinc-50" title="Exit test">
+      ← Exit
+    </button>
+    <h1 className="truncate text-sm font-bold text-zinc-800">Listening — {testId}</h1>
+  </div>
+  <div className="flex items-center gap-3">
+    <span className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1 font-mono text-sm font-bold tabular-nums" data-testid="timer">
+      {formatted}
+    </span>
+    <button onClick={handleSubmit} disabled={!!submitted} className="rounded-lg bg-emerald-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50">
+      {submitted ? 'Submitted' : 'Submit'}
+    </button>
+  </div>
+</header>
 ```
 
-Add `const navigate = useNavigate();` next to the existing `useParams` line. Replace the `<header ...>...</header>` block (lines 230-244) with:
+- [ ] **Step 2: Writing header restyle in place**
+
+In `WritingEditor.tsx`, ensure `useNavigate` is imported (add `import { useNavigate } from 'react-router-dom';` and `const navigate = useNavigate();` if absent — verify against the file top before editing). Replace its `<header ...>...</header>` (lines 249-264) with:
 
 ```tsx
-<ExamHeader
-  title={`Listening — ${testId}`}
-  formatted={formatted}
-  submitLabel={submitted ? 'Submitted' : 'Submit'}
-  submitDisabled={!!submitted}
-  onSubmit={handleSubmit}
-  onExit={() => navigate('/listening')}
-/>
-```
-
-- [ ] **Step 2: Writing header → ExamHeader**
-
-In `WritingEditor.tsx`, add the same two imports; it already imports `useNavigate`? Check the file top — if missing, add it. Replace its `<header ...>...</header>` (lines 249-264) with:
-
-```tsx
-<ExamHeader
-  title={`Writing — ${testId}`}
-  formatted={formatted}
-  submitLabel={result ? 'Submitted' : submitting ? 'Scoring…' : queued ? 'Queued' : 'Submit'}
-  submitDisabled={!!result || submitting}
-  onSubmit={handleSubmit}
-  onExit={() => navigate('/writing')}
-  submitTestId="submit-btn"
-/>
+<header className="flex h-12 shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-4">
+  <div className="flex min-w-0 items-center gap-2">
+    <button onClick={() => navigate('/writing')} className="rounded-lg border border-zinc-200 px-2.5 py-1 text-xs font-semibold text-zinc-600 hover:bg-zinc-50" title="Exit test">
+      ← Exit
+    </button>
+    <h1 className="truncate text-sm font-bold text-zinc-800">Writing — {testId}</h1>
+  </div>
+  <div className="flex items-center gap-3">
+    <span className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1 font-mono text-sm font-bold tabular-nums" data-testid="timer">
+      {formatted}
+    </span>
+    <button onClick={handleSubmit} disabled={!!result || submitting} data-testid="submit-btn" className="rounded-lg bg-emerald-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50">
+      {result ? 'Submitted' : submitting ? 'Scoring…' : queued ? 'Queued' : 'Submit'}
+    </button>
+  </div>
+</header>
 ```
 
 Keep the queued/error/score banners below it exactly as they are.
@@ -751,7 +581,7 @@ Replace lines 410-415 of `SpeakingPage.tsx` with:
 </header>
 ```
 
-Ensure `useNavigate` is imported in `SpeakingPage.tsx` (add `import { useNavigate } from 'react-router-dom';` and `const navigate = useNavigate();` if absent — verify against the file top before editing).
+Ensure `useNavigate` is imported in `SpeakingPage.tsx` (add the import and `const navigate = useNavigate();` if absent — verify against the file top before editing).
 
 - [ ] **Step 4: Reading free strip**
 
@@ -795,67 +625,35 @@ git commit -m "feat: consistent exam headers and free strip across players"
 
 ---
 
-### Task 8: Verification + smoke coverage
+### Task 7: Verification (no new test files)
 
-**Files:**
-- Test: `tests/unit/freeCoach.test.ts` (new — asserts spec invariants that are cheap in node)
+**Files:** none (verification only).
 
-**Interfaces:**
-- Consumes: `streak.ts` helpers, `DEMO_TESTS` seed (existing `src/lib/db/seed` export used by `reading.test.ts`).
-- Produces: regression net proving free-app invariants hold.
-
-- [ ] **Step 1: Write invariant tests**
-
-Create `tests/unit/freeCoach.test.ts`:
-
-```ts
-import { describe, it, expect } from 'vitest';
-import { computeStreak, computeXP } from '../../src/renderer/shared/progress/streak';
-
-describe('free-coach invariants', () => {
-  it('streak derives from stored days only (no network)', () => {
-    expect(computeStreak(['2026-09-02', '2026-09-03'], '2026-09-03')).toBe(2);
-  });
-  it('XP never goes negative', () => {
-    expect(computeXP(-5)).toBe(0);
-    expect(computeXP(0)).toBe(0);
-  });
-  it('seed still provides practicable tests for all four skills', async () => {
-    const { DEMO_TESTS } = await import('../../src/lib/db/seed');
-    for (const kind of ['reading', 'listening', 'writing', 'speaking'] as const) {
-      const tests = DEMO_TESTS.tests.filter((t) => t.kind === kind);
-      expect(tests.length, `skill ${kind} should have seeded tests`).toBeGreaterThan(0);
-    }
-  });
-});
-```
-
-- [ ] **Step 2: Run new tests**
-
-Run: `npx vitest run tests/unit/freeCoach.test.ts`
-Expected: 3 tests PASS. (If the seed export name differs, read `src/lib/db/seed.ts` top-level export and fix the import — the existing `reading.test.ts` uses `DEMO_TESTS.tests`? It uses `DEMO_TESTS.sections` and `DEMO_TESTS.questions`; verify `tests` array exists before running.)
-
-- [ ] **Step 3: Full verification**
+- [ ] **Step 1: Full verification**
 
 Run: `npx tsc --noEmit -p tsconfig.web.json` → PASS.
-Run: `npx vitest run tests/unit` → all files PASS (was 35, now 35 + 7 + 3 = 45).
+Run: `npx vitest run tests/unit` → all files PASS (35 existing + 8 streak = 43).
 
-- [ ] **Step 4: Manual end-to-end checklist in dev server**
+- [ ] **Step 2: Manual end-to-end checklist in dev server**
 
 Run: `npm run dev` and walk: Home (badges, streak, continue, plan, chart, weak links) → each library (search, cards, start) → each player (exit, timer, submit, review) → back Home (attempt recorded, streak/XP updated).
 Expected: zero console errors, zero premium copy (`grep -ri "premium\|upgrade now\|paywall" src/renderer` returns nothing).
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 3: Commit the verification as an empty allowlist check**
+
+No code changes expected. If the walk surfaces only trivial copy nits, fix inline in this task and commit:
 
 ```bash
-git add tests/unit/freeCoach.test.ts
-git commit -m "test: free-coach invariants and seed coverage"
+git add -u
+git commit -m "chore: free-coach verification fixes" --allow-empty
 ```
+
+ponytail: no new `freeCoach.test.ts` — streak invariants live in `streak.test.ts` (Task 2) and seed coverage in `reading.test.ts`; a third file asserting the same would be boilerplate. Add one only when an invariant has no home.
 
 ---
 
 ## Self-review (run by plan author)
 
-- **Spec coverage:** §1 tokens/deps → Task 1; streak/XP math (§3) → Task 2; §2 shell → Task 3; §3 home → Task 4; §4 libraries → Tasks 5–6 (Reading filters explicitly preserved); §5 players → Task 7 (Engnovate Reading kept, free strip replaces promo); §6 data/errors/tests → Tasks 2/8, no schema change anywhere.
-- **Placeholder scan:** no TBD/TODO; every code step ships exact code; Task 4's rewrite brief is explicit about which blocks stay verbatim and which ids must survive. The two "verify import first" notes (Writing `useNavigate`, seed `tests` export) are concrete file-top checks, not open questions.
-- **Type consistency:** `LibraryTest` shape matches the existing `TestRow` selects; `ExamHeader` props match all three call sites; `TARGET_BAND_KEY` string is identical in Task 2 and Task 4; testid strings match current files.
+- **Spec coverage:** §1 tokens (no deps per ponytail) → Task 1; streak/XP math (§3) → Task 2; §2 shell → Task 3; §3 home → Task 4; §4 libraries → Task 5 (Reading filters explicitly preserved); §5 players → Task 6 (Engnovate Reading kept, free strip replaces promo); §6 data/errors/tests → Tasks 2/7, no schema change anywhere.
+- **Placeholder scan:** no TBD/TODO; every code step ships exact code; Task 4's rewrite brief is explicit about which blocks stay verbatim and which ids must survive. The two "verify import first" notes (Writing/Speaking `useNavigate`) are concrete file-top checks, not open questions.
+- **Type consistency:** inline `TestRow` shape matches the existing selects in all three list pages; header snippets match all three call sites (`formatted`, `handleSubmit`, `testId` all exist); `TARGET_BAND_KEY` string is identical in Task 2 and Task 4; testid strings match current files.

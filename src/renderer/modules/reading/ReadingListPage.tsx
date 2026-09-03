@@ -42,12 +42,12 @@ function chipMatchesTest(chip: string, testId: string): boolean {
   return (qTypes[testId] || []).some(t => t.toLowerCase().includes(chip.toLowerCase().split(' /')[0].toLowerCase()) || chip.toLowerCase().includes(t.toLowerCase()));
 }
 
-const TEST_DETAILS: Record<string, { passages: string; qCount: number; note: string }> = {
-  'reading-ieltsfever-1': { passages: '3 passages', qCount: 40, note: 'Scanned PDF + verified key (pages 2-9)' },
-  'reading-official-40': { passages: '10 sections', qCount: 40, note: 'All 10 task types from 46pp PDF' },
-  'reading-a1': { passages: '2 passages', qCount: 8, note: 'Climate + Silk Road' },
-  'reading-a2': { passages: '1 passage', qCount: 6, note: 'Silk Road extended' },
-  'reading-g1': { passages: '2 sections', qCount: 4, note: 'Workplace notices' },
+const TEST_DETAILS: Record<string, { passages: string; qCount: number; note: string; format?: string }> = {
+  'reading-ieltsfever-1': { passages: '3 sections', qCount: 40, note: 'Grocery Stores · Revolutions in Mapping · Communication in Science', format: '3 sections · ~13 questions each · 40 in total' },
+  'reading-official-40': { passages: '3 sections', qCount: 40, note: 'Science & Nature · History & Society · Work & Evolution', format: '3 sections · ~13 questions each · 40 in total' },
+  'reading-a1': { passages: '3 sections', qCount: 40, note: 'Climate-Responsive Architecture · Silk Road · Smart Transit', format: '3 sections · ~13 questions each · 40 in total' },
+  'reading-a2': { passages: '3 sections', qCount: 40, note: 'Silk Road Reconsidered · Climate Architecture · Smart Cities', format: '3 sections · ~13 questions each · 40 in total' },
+  'reading-g1': { passages: '3 sections', qCount: 40, note: 'Workplace Notices · Recruitment Procedures · Consumer Rights', format: '3 sections · ~13 questions each · 40 in total' },
 };
 
 export default function ReadingListPage(): JSX.Element {
@@ -122,7 +122,6 @@ export default function ReadingListPage(): JSX.Element {
           <span className="rounded bg-emerald-600 px-3 py-1.5 font-bold text-white">✓ All Free — No Premium, No Paywall</span>
           <span className="hidden text-zinc-600 md:block">All tests, all solutions, all checks — free forever. Progress saved locally on this PC.</span>
         </div>
-      </div>
       </div>
 
       {/* Header */}
@@ -253,6 +252,7 @@ export default function ReadingListPage(): JSX.Element {
                             {t.title}
                           </h3>
                           <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-zinc-600">{d.note} {isFever && '— scanned PDF Pages 2-9 with verified key.'}</p>
+                          {TEST_DETAILS[t.id]?.format && <p className="mt-1 text-[10px] text-zinc-400 font-medium">{TEST_DETAILS[t.id].format}</p>}
                         </div>
                         <div className="hidden shrink-0 text-2xl opacity-20 group-hover:opacity-40">📄</div>
                       </div>
