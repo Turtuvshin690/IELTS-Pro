@@ -239,7 +239,7 @@ export default function ReadingListPage(): JSX.Element {
                   const isFever = t.id === 'reading-ieltsfever-1';
                   const isOfficial = t.id === 'reading-official-40';
                   return (
-                    <div key={t.id} className={`group relative flex flex-col rounded-xl border bg-white p-5 shadow-sm transition hover:shadow-md ${isFever ? 'ring-1 ring-red-200' : ''}`} data-testid={`reading-card-${t.id}`}>
+                    <div key={t.id} className={`group relative flex flex-col rounded-xl border bg-white p-5 shadow-card transition hover:shadow-md ${isFever ? 'ring-1 ring-red-200' : ''}`} data-testid={`reading-card-${t.id}`}>
                       {isFever && <div className="absolute -top-2 left-4 rounded-full bg-red-600 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow">First • Your PDF • 40 Qs</div>}
                       {isOfficial && <div className="absolute -top-2 left-4 rounded-full bg-zinc-900 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-white">Official • All Types</div>}
                       <div className="mt-2 flex items-start justify-between gap-3">
@@ -257,7 +257,7 @@ export default function ReadingListPage(): JSX.Element {
                         <div className="hidden shrink-0 text-2xl opacity-20 group-hover:opacity-40">📄</div>
                       </div>
                       <div className="mt-4 flex items-center gap-2">
-                        <Link to={`/reading/${t.id}`} className="flex-1 rounded-full bg-red-600 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-red-700" data-testid={`start-reading-${t.id}`}>
+                        <Link to={`/reading/${t.id}`} className="flex-1 rounded-full bg-emerald-600 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700" data-testid={`start-reading-${t.id}`}>
                           Take Test
                         </Link>
                         <Link to={`/reading/${t.id}`} className="rounded-full border border-zinc-200 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50" data-testid={`practice-reading-${t.id}`}>
