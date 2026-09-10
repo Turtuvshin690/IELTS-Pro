@@ -116,10 +116,10 @@ export default function ReadingListPage(): JSX.Element {
 
   return (
     <div className="min-h-screen bg-[#FCFCF9] text-zinc-900" data-testid="reading-list">
-      {/* Top banner — free, no premium */}
+      {/* Top banner — free for everyone */}
       <div className="border-b border-zinc-200 bg-white">
         <div className="mx-auto max-w-[1280px] px-6 py-3 flex items-center justify-between text-xs">
-          <span className="rounded bg-emerald-600 px-3 py-1.5 font-bold text-white">✓ All Free — No Premium, No Paywall</span>
+          <span className="rounded bg-emerald-600 px-3 py-1.5 font-bold text-white">✓ All Free — Forever</span>
           <span className="hidden text-zinc-600 md:block">All tests, all solutions, all checks — free forever. Progress saved locally on this PC.</span>
         </div>
       </div>
