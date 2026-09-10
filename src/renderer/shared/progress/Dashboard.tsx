@@ -254,7 +254,7 @@ export default function Dashboard(): JSX.Element {
     if (weakItems && weakItems.length > 0) {
       return weakAreas(weakItems);
     }
-    // fallback demo weakAreas if no per-question data: synthesize from attempts band distribution to show component still works
+    // no per-question items — return empty so the placeholder card renders
     if (allAttempts.length === 0) return [];
     // no per-question items yet — return empty to show placeholder cards
     return [];
@@ -283,7 +283,7 @@ export default function Dashboard(): JSX.Element {
   if (loading) return <div className="p-6 text-sm">Loading dashboard…</div>;
 
   return (
-    <div className="mx-auto max-w-6xl bg-paper p-6 text-ink">
+    <div className="mx-auto max-w-6xl p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold" data-testid="dashboard-title">
@@ -300,10 +300,12 @@ export default function Dashboard(): JSX.Element {
             step={0.5}
             value={targetBand}
             onChange={(e) => {
-              const n = Number(e.target.value);
+              const raw = e.target.value;
+              if (raw.trim() === '' || Number.isNaN(Number(raw))) return;
+              const n = Math.min(9, Math.max(0, Number(raw)));
               setTargetBand(n);
               try {
-                if (Number.isFinite(n)) localStorage.setItem(TARGET_BAND_KEY, String(n));
+                localStorage.setItem(TARGET_BAND_KEY, String(n));
               } catch {
                 // local-only persistence is best-effort
               }

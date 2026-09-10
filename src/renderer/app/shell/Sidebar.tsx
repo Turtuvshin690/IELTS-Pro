@@ -30,7 +30,7 @@ export default function Sidebar(): JSX.Element {
         const rows = (await w.db.query('SELECT submittedAt FROM attempts', [])) as { submittedAt: string }[];
         if (cancelled) return;
         setAttempts(rows.length);
-        setStreak(computeStreak(rows.map((r) => dayKey(String(r.submittedAt ?? ''))), todayKey()));
+        setStreak(computeStreak(rows.map((r) => dayKey(String(r.submittedAt ?? ''))).filter((d) => d.length >= 10), todayKey()));
       } catch {
         // sidebar stats are best-effort; nav works without them
       }
