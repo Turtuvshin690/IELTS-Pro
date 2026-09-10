@@ -367,15 +367,12 @@ export default function ReadingPage(): JSX.Element {
   return (
     <div className="flex h-screen flex-col bg-white font-sans text-zinc-900 select-none">
       {/* Red promo banner */}
-      <div className="flex h-8 shrink-0 items-center justify-center bg-[#C1272D] px-4 text-center text-[13px] font-semibold text-white">
-        <span className="mr-1">🔥</span>
-        <span>
-          Today Only: Save 30% on Premium — Offer Ends Soon! - <span className="underline">Upgrade Now!</span>
-        </span>
+      <div className="flex h-8 shrink-0 items-center justify-center bg-emerald-600 px-4 text-center text-[13px] font-semibold text-white">
+        <span>✓ 100% free — full test, instant checking, no account needed</span>
       </div>
 
       {/* Title bar */}
-      <div className="flex h-12 shrink-0 items-center justify-between border-b border-red-100 bg-[#FDF2F2] px-3">
+      <div className="flex h-12 shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-3">
         <div className="flex w-24 items-center gap-1">
           <span className="flex h-7 w-7 items-center justify-center rounded bg-gradient-to-b from-orange-400 to-red-600 text-lg font-extrabold text-white">
             E

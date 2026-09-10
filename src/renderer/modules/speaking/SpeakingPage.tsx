@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { pickMime, isTooLong, startRecording } from './recorder';
 import { SPEAKING_SYSTEM } from '../../../lib/nim/prompts';
 
@@ -37,6 +37,7 @@ const PART_LABELS = ['Part 1', 'Part 2', 'Part 3'];
 
 export default function SpeakingPage(): JSX.Element {
   const { testId } = useParams<{ testId: string }>();
+  const navigate = useNavigate();
   const [sections, setSections] = useState<Section[]>([]);
   const [questions, setQuestions] = useState<ParsedQuestion[]>([]);
   const [passages, setPassages] = useState<Passage[]>([]);
@@ -407,11 +408,16 @@ export default function SpeakingPage(): JSX.Element {
 
   return (
     <div className="flex h-screen flex-col">
-      <header className="flex items-center justify-between border-b px-4 py-2">
-        <h1 className="text-sm font-semibold">Speaking — {testId}</h1>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-gray-500">11–14 min mock • per-question recording</span>
+      <header className="flex h-12 shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-4">
+        <div className="flex min-w-0 items-center gap-2">
+          <button onClick={() => navigate('/speaking')} className="rounded-lg border border-zinc-200 px-2.5 py-1 text-xs font-semibold text-zinc-600 hover:bg-zinc-50" title="Exit test">
+            ← Exit
+          </button>
+          <h1 className="truncate text-sm font-bold text-zinc-800">Speaking — {testId}</h1>
         </div>
+        <span className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold text-zinc-600">
+          11–14 min mock · per-question recording
+        </span>
       </header>
 
       {/* device selector */}

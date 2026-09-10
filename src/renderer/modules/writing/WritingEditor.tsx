@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useTimer } from '../../shared/timer/useTimer';
 import { countWords, scoreWriting } from './scoring';
 
@@ -18,6 +18,7 @@ type Section = { id: string; testId: string; title: string | null; passageId: st
 
 export default function WritingEditor(): JSX.Element {
   const { testId } = useParams<{ testId: string }>();
+  const navigate = useNavigate();
   const [essay, setEssay] = useState('');
   const [result, setResult] = useState<WritingScore | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -246,18 +247,18 @@ export default function WritingEditor(): JSX.Element {
 
   return (
     <div className="flex h-screen flex-col">
-      <header className="flex items-center justify-between border-b px-4 py-2">
-        <h1 className="text-sm font-semibold">Writing — {testId}</h1>
-        <div className="flex items-center gap-4">
-          <span className="font-mono text-sm" data-testid="timer">
+      <header className="flex h-12 shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-4">
+        <div className="flex min-w-0 items-center gap-2">
+          <button onClick={() => navigate('/writing')} className="rounded-lg border border-zinc-200 px-2.5 py-1 text-xs font-semibold text-zinc-600 hover:bg-zinc-50" title="Exit test">
+            ← Exit
+          </button>
+          <h1 className="truncate text-sm font-bold text-zinc-800">Writing — {testId}</h1>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1 font-mono text-sm font-bold tabular-nums" data-testid="timer">
             {formatted}
           </span>
-          <button
-            className="rounded bg-black px-4 py-1 text-sm text-white disabled:opacity-50"
-            onClick={handleSubmit}
-            disabled={!!result || submitting}
-            data-testid="submit-btn"
-          >
+          <button onClick={handleSubmit} disabled={!!result || submitting} data-testid="submit-btn" className="rounded-lg bg-emerald-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50">
             {result ? 'Submitted' : submitting ? 'Scoring…' : queued ? 'Queued' : 'Submit'}
           </button>
         </div>
