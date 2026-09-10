@@ -35,7 +35,7 @@ export default function WritingListPage(): JSX.Element {
         <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 text-xl text-white">✍️</span>
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight">Writing</h1>
-          <p className="mt-0.5 text-sm text-zinc-500">60 min · Task 1 + Task 2 · AI feedback included free · <span className="font-semibold text-emerald-700">Free</span></p>
+          <p className="mt-0.5 text-sm text-zinc-500">60 min · Task 1 + Task 2 · AI feedback included · <span className="font-semibold text-emerald-700">Free</span></p>
         </div>
       </div>
       <input
